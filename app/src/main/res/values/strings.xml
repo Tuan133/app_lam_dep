@@ -1,0 +1,155 @@
+<resources>
+    <string name="app_name">Glow Beauty</string>
+    <string name="nav_home">Trang chủ</string>
+    <string name="nav_booking">Chọn lịch</string>
+    <string name="nav_wallet">Ví tiền</string>
+    <string name="nav_profile">Tài khoản</string>
+    <string name="nav_map">Bản đồ</string>
+
+    <!-- Search & Filter -->
+    <string name="search_placeholder">Tìm salon, spa, nail gần bạn...</string>
+    <string name="filter_title">Bộ lọc tìm kiếm</string>
+    <string name="filter_price">Mức giá</string>
+    <string name="filter_rating">Đánh giá sao</string>
+    <string name="filter_distance">Khoảng cách</string>
+    <string name="filter_apply">Áp dụng</string>
+    <string name="filter_reset">Đặt lại</string>
+    <string name="vip_badge">ĐỐI TÁC VIP</string>
+    <string name="deposit_badge">YÊU CẦU CỌC</string>
+    <string name="no_deposit_badge">KHÔNG CẦN CỌC</string>
+
+    <!-- Booking -->
+    <string name="booking_title">Chọn lịch hẹn</string>
+    <string name="booking_shop_address">Địa chỉ quán:</string>
+    <string name="booking_services_selected">Dịch vụ đã chọn</string>
+    <string name="booking_select_slot">Khung giờ hẹn</string>
+    <string name="booking_customer_info">Thông tin người đặt</string>
+    <string name="booking_name">Họ và tên</string>
+    <string name="booking_phone">Số điện thoại</string>
+    <string name="booking_note">Ghi chú yêu cầu đặc biệt</string>
+    <string name="booking_confirm_button">Xác nhận đặt lịch</string>
+    <string name="booking_cancel_button">Hủy lịch</string>
+    <string name="booking_cancel_dialog_title">Xác nhận hủy lịch hẹn</string>
+    <string name="booking_cancel_policy_eligible">Bạn hủy trước giờ hẹn hơn 2 tiếng. Tiền cọc sẽ được hoàn 100% về ví trong ứng dụng.</string>
+    <string name="booking_cancel_policy_ineligible">Đã quá thời hạn hủy (dưới 2 tiếng trước giờ hẹn). Tiền cọc không được hoàn lại theo quy định.</string>
+
+    <!-- Wallet & Escrow -->
+    <string name="wallet_title">Ví GLOW Pay</string>
+    <string name="wallet_balance">Số dư ví khả dụng</string>
+    <string name="wallet_topup">Nạp tiền vào ví</string>
+    <string name="wallet_history">Lịch sử giao dịch</string>
+    <string name="wallet_held_deposit">Sàn tạm giữ cọc</string>
+    <string name="wallet_refunded">Đã hoàn tiền về ví</string>
+    <string name="wallet_released">Đã giải ngân cho tiệm</string>
+    <string name="mock_payment_confirm">Mở trang quét mã QR thanh toán</string>
+
+    <!-- Common States -->
+    <string name="loading">Đang tải...</string>
+    <string name="error_general">Đã có lỗi xảy ra. Vui lòng thử lại.</string>
+    <string name="empty_results">Không tìm thấy kết quả phù hợp</string>
+    <string name="retry">Thử lại</string>
+
+    <!-- MERCHANT PORTAL STRINGS -->
+    <!-- Navigation -->
+    <string name="merchant_nav_dashboard">Tổng quan</string>
+    <string name="merchant_nav_bookings">Lịch hẹn</string>
+    <string name="merchant_nav_services">Dịch vụ</string>
+    <string name="merchant_nav_schedule">Ca &amp; Khung giờ</string>
+    <string name="merchant_nav_reviews">Đánh giá</string>
+    <string name="merchant_nav_finances">Tiền cọc</string>
+    <string name="merchant_nav_profile">Hồ sơ quán</string>
+
+    <!-- 1. Đăng ký cửa hàng & Chọn gói -->
+    <string name="merchant_register_title">Đăng ký Đối tác Cửa hàng</string>
+    <string name="merchant_register_subtitle">Gia nhập hệ sinh thái làm đẹp và tiếp cận hàng ngàn khách hàng tiềm năng</string>
+    <string name="merchant_field_shop_name">Tên cửa hàng / Salon</string>
+    <string name="merchant_field_owner_name">Họ và tên chủ cơ sở</string>
+    <string name="merchant_field_phone">Số điện thoại liên hệ</string>
+    <string name="merchant_field_email">Email đăng ký</string>
+    <string name="merchant_field_address">Địa chỉ kinh doanh</string>
+    <string name="merchant_field_description">Mô tả giới thiệu cơ sở</string>
+    <string name="merchant_field_hours">Giờ hoạt động (ví dụ: 08:30 - 21:00)</string>
+    <string name="merchant_field_plan_title">Chọn gói đăng ký hội viên</string>
+    <string name="merchant_plan_normal">Gói Tiêu chuẩn (Normal)</string>
+    <string name="merchant_plan_vip">Gói Đối tác VIP (Ưu tiên hiển thị &amp; Quảng bá)</string>
+    <string name="merchant_plan_term_3">Kỳ hạn 3 tháng</string>
+    <string name="merchant_plan_term_6">Kỳ hạn 6 tháng</string>
+    <string name="merchant_plan_term_12">Kỳ hạn 12 tháng</string>
+    <string name="merchant_first_month_free">Khuyến mãi: Miễn phí trọn vẹn tháng đầu tiên</string>
+    <string name="merchant_deposit_policy_title">Chính sách đặt cọc giữ chỗ</string>
+    <string name="merchant_enable_deposit">Yêu cầu khách hàng đặt cọc khi đặt lịch</string>
+    <string name="merchant_deposit_options_hint">Thiết lập đúng 5 mức tiền cọc cố định (VNĐ):</string>
+    <string name="merchant_submit_registration">Gửi hồ sơ xét duyệt</string>
+    <string name="merchant_status_draft">Bản nháp</string>
+    <string name="merchant_status_pending">Đang chờ Admin duyệt</string>
+    <string name="merchant_status_approved">Đã duyệt - Đang hoạt động</string>
+    <string name="merchant_status_rejected">Bị từ chối hồ sơ</string>
+    <string name="merchant_resubmit_registration">Chỉnh sửa và Gửi lại hồ sơ</string>
+
+    <!-- 2. Quản lý hồ sơ -->
+    <string name="merchant_profile_title">Quản lý hồ sơ cửa hàng</string>
+    <string name="merchant_profile_save_changes">Lưu thay đổi</string>
+    <string name="merchant_profile_edit_warning">Lưu ý: Thay đổi tên hoặc địa chỉ sẽ được gửi thông báo ghi nhận cho Admin hậu kiểm.</string>
+
+    <!-- 3. Quản lý dịch vụ -->
+    <string name="merchant_service_title">Danh mục dịch vụ</string>
+    <string name="merchant_service_add">Thêm dịch vụ mới</string>
+    <string name="merchant_service_edit">Sửa dịch vụ</string>
+    <string name="merchant_service_delete">Xóa dịch vụ</string>
+    <string name="merchant_service_name">Tên dịch vụ</string>
+    <string name="merchant_service_price">Giá dịch vụ (VNĐ)</string>
+    <string name="merchant_service_duration">Thời lượng thực hiện (phút)</string>
+    <string name="merchant_service_active">Đang kinh doanh</string>
+    <string name="merchant_service_inactive">Tạm ngưng nhận khách</string>
+    <string name="merchant_service_in_use_warning">Dịch vụ đang có đơn đặt hẹn chưa hoàn tất. Hệ thống sẽ chuyển sang chế độ ẩn thay vì xóa vĩnh viễn.</string>
+
+    <!-- 4 & 5. Quản lý lịch làm việc & Khung giờ trống -->
+    <string name="merchant_schedule_title">Quản lý ca &amp; Lịch làm việc</string>
+    <string name="merchant_slot_title">Khung giờ tiếp khách</string>
+    <string name="merchant_work_days">Ngày làm việc trong tuần</string>
+    <string name="merchant_work_hours">Giờ mở / đóng cửa</string>
+    <string name="merchant_break_time">Khoảng nghỉ giữa ca</string>
+    <string name="merchant_special_holidays">Ngày nghỉ đột xuất / Lễ tết</string>
+    <string name="merchant_slot_capacity">Số khách tiếp nhận tối đa (Capacity)</string>
+    <string name="merchant_slot_booked">Khách đã đặt</string>
+    <string name="merchant_slot_block">Khóa khung giờ này</string>
+    <string name="merchant_slot_unblock">Mở lại khung giờ</string>
+    <string name="merchant_slot_capacity_error">Không thể giảm số lượng phục vụ thấp hơn số đơn đã được khách đặt trước.</string>
+
+    <!-- 6 & 7. Quản lý Booking & Trạng thái dịch vụ -->
+    <string name="merchant_booking_title">Danh sách lịch hẹn</string>
+    <string name="merchant_booking_filter_all">Tất cả</string>
+    <string name="merchant_booking_filter_pending">Chờ xác nhận</string>
+    <string name="merchant_booking_filter_confirmed">Đã xác nhận</string>
+    <string name="merchant_booking_filter_in_service">Đang phục vụ</string>
+    <string name="merchant_booking_filter_completed">Hoàn thành</string>
+    <string name="merchant_booking_filter_cancelled">Đã hủy</string>
+    <string name="merchant_btn_confirm">Xác nhận lịch hẹn</string>
+    <string name="merchant_btn_in_service">Bắt đầu phục vụ</string>
+    <string name="merchant_btn_complete">Hoàn thành dịch vụ</string>
+    <string name="merchant_btn_cancel">Từ chối / Hủy lịch</string>
+    <string name="merchant_booking_auto_complete_note">Hệ thống sẽ tự động hoàn tất sau 30 phút kể từ lúc kết thúc dịch vụ nếu shop quên thao tác.</string>
+
+    <!-- 8. Phản hồi đánh giá -->
+    <string name="merchant_review_title">Khách hàng đánh giá</string>
+    <string name="merchant_review_reply_hint">Nhập phản hồi của cửa hàng tới khách...</string>
+    <string name="merchant_review_reply_btn">Gửi phản hồi</string>
+    <string name="merchant_review_report_btn">Báo cáo vi phạm</string>
+    <string name="merchant_review_request_remove">Yêu cầu gỡ đánh giá</string>
+    <string name="merchant_review_report_reason_hint">Lý do khiếu nại gửi Ban quản trị</string>
+
+    <!-- 9. Theo dõi đặt cọc & Ví Escrow -->
+    <string name="merchant_deposit_title">Theo dõi tiền cọc (Ký quỹ Sàn)</string>
+    <string name="merchant_deposit_held">Cọc sàn đang giữ</string>
+    <string name="merchant_deposit_released">Cọc đã giải ngân cho tiệm</string>
+    <string name="merchant_deposit_refunded">Cọc đã hoàn trả cho khách</string>
+    <string name="merchant_deposit_note">Lưu ý: Tiền cọc được ký quỹ an toàn trên sàn và tự động giải ngân khi đến giờ hẹn hoặc khi dịch vụ hoàn tất.</string>
+
+    <!-- 10. Thống kê cơ bản -->
+    <string name="merchant_stats_title">Thống kê hoạt động kinh doanh</string>
+    <string name="merchant_stats_today">Hôm nay</string>
+    <string name="merchant_stats_week">Tuần này</string>
+    <string name="merchant_stats_month">Tháng này</string>
+    <string name="merchant_stats_total_bookings">Tổng số lượt đặt</string>
+    <string name="merchant_stats_deposit_revenue">Doanh thu cọc đã nhận</string>
+</resources>
