@@ -110,32 +110,13 @@ fun WalletScreen(
                                 Column(
                                     modifier = Modifier.padding(20.dp)
                                 ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "SỐ DƯ KHẢ DỤNG",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White.copy(alpha = 0.85f),
-                                            letterSpacing = 1.sp
-                                        )
-                                        Box(
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(12.dp))
-                                                .background(Color.White.copy(alpha = 0.2f))
-                                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                                        ) {
-                                            Text(
-                                                text = "Sàn giữ tiền",
-                                                color = Color.White,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.SemiBold
-                                            )
-                                        }
-                                    }
+                                    Text(
+                                        text = "SỐ DƯ KHẢ DỤNG",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White.copy(alpha = 0.85f),
+                                        letterSpacing = 1.sp
+                                    )
 
                                     Spacer(modifier = Modifier.height(10.dp))
 

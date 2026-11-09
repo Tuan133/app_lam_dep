@@ -73,7 +73,7 @@ fun BookingScreen(
                             color = TextNoir
                         )
                         Text(
-                            text = "Xác nhận thời gian & bảo chứng giữ chỗ",
+                            text = "Xác nhận thời gian giữ chỗ",
                             fontSize = 11.5.sp,
                             color = TextMuted,
                             fontWeight = FontWeight.Normal

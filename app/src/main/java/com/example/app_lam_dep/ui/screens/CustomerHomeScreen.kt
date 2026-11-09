@@ -186,7 +186,7 @@ fun CustomerHomeScreen(
                                 ) {
                                     if (searchQuery.isEmpty()) {
                                         Text(
-                                            text = "Tìm salon, dịch vụ, quận...",
+                                            text = "Tìm dịch vụ ở gần bạn",
                                             color = Color(0xFF8E7A80),
                                             fontSize = 13.sp
                                         )
@@ -596,7 +596,7 @@ fun CustomerHomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .height(185.dp)
+                    .height(170.dp)
                     .clickable { onViewAllSalons() },
                 shape = RoundedCornerShape(22.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
@@ -628,49 +628,17 @@ fun CustomerHomeScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .padding(16.dp),
+                            .padding(18.dp),
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                            // Pill badge
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Color.White.copy(alpha = 0.15f))
-                                    .border(0.75.dp, ChampagneGold.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 8.dp, vertical = 3.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    GlowIcon(icon = GlowIcons.Sparkle, tint = ChampagneGold, size = 11.dp)
-                                    Text(
-                                        text = "CỬA HÀNG GỢI Ý DÀNH CHO BẠN",
-                                        color = ChampagneGold,
-                                        fontSize = 8.5.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        letterSpacing = 0.5.sp
-                                    )
-                                }
-                            }
-
-                            Text(
-                                text = "11 Salon Đà Nẵng\nĐã Kiểm Duyệt Độc Quyền",
-                                color = Color.White,
-                                fontFamily = FontFamily.Serif,
-                                fontSize = 17.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                lineHeight = 22.sp
-                            )
-
-                            Text(
-                                text = "Tuyển chọn salon cao cấp với không gian sang trọng và phục vụ tận tâm",
-                                color = Color(0xFFF3CEC5),
-                                fontSize = 11.sp,
-                                lineHeight = 16.sp
-                            )
-                        }
+                        Text(
+                            text = "11 Salon Đà Nẵng\nĐã Kiểm Duyệt Độc Quyền",
+                            color = Color.White,
+                            fontFamily = FontFamily.Serif,
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 25.sp
+                        )
 
                         // Explore button
                         Row(
@@ -678,17 +646,17 @@ fun CustomerHomeScreen(
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(Color.White)
                                 .clickable { onViewAllSalons() }
-                                .padding(horizontal = 14.dp, vertical = 6.dp),
+                                .padding(horizontal = 16.dp, vertical = 7.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Text(
-                                text = "Khám phá các Cửa hàng gợi ý",
-                                fontSize = 11.5.sp,
+                                text = "Khám phá ngay",
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF360814)
                             )
-                            GlowIcon(icon = GlowIcons.ChevronRight, tint = Color(0xFF360814), size = 12.dp)
+                            GlowIcon(icon = GlowIcons.ChevronRight, tint = Color(0xFF360814), size = 13.dp)
                         }
                     }
 
@@ -741,23 +709,13 @@ fun CustomerHomeScreen(
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF3A101A)
                     )
-                    Row(
-                        modifier = Modifier.clickable { onViewAllSalons() },
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
-                    ) {
-                        Text(
-                            text = "Xem tất cả",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF6B1228)
-                        )
-                        GlowIcon(
-                            icon = GlowIcons.ChevronRight,
-                            tint = Color(0xFF6B1228),
-                            size = 12.dp
-                        )
-                    }
+                    Text(
+                        text = "Xem tất cả",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF6B1228),
+                        modifier = Modifier.clickable { onViewAllSalons() }
+                    )
                 }
 
                 Card(
@@ -871,31 +829,12 @@ fun CustomerHomeScreen(
                                 }
                             }
                         }
-
-                        // Voucher Salon discount bar clarifying shop promotion
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(Color(0xFFFFF1F2))
-                                .padding(horizontal = 10.dp, vertical = 7.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            GlowIcon(icon = GlowIcons.Tag, tint = Color(0xFFE11D48), size = 13.dp)
-                            Text(
-                                text = "Voucher: Giảm 30.000đ khi đặt lịch qua app",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF9F1239)
-                            )
-                        }
                     }
                 }
             }
         }
 
-        // 6. Section: Dịch vụ yêu thích (Image 1 bottom carousel)
+        // 6. Section: Dịch vụ nổi bật
         item {
             Column(
                 modifier = Modifier
@@ -909,28 +848,18 @@ fun CustomerHomeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Dịch vụ yêu thích",
+                        text = "Dịch vụ nổi bật",
                         fontSize = 17.5.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF3A101A)
                     )
-                    Row(
-                        modifier = Modifier.clickable { onViewAllSalons() },
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
-                    ) {
-                        Text(
-                            text = "Xem tất cả",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF6B1228)
-                        )
-                        GlowIcon(
-                            icon = GlowIcons.ChevronRight,
-                            tint = Color(0xFF6B1228),
-                            size = 12.dp
-                        )
-                    }
+                    Text(
+                        text = "Xem tất cả",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF6B1228),
+                        modifier = Modifier.clickable { onViewAllSalons() }
+                    )
                 }
 
                 LazyRow(

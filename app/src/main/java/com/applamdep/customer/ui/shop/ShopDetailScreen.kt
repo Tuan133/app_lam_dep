@@ -56,7 +56,6 @@ private data class AlbumItem(
 
 // BẢNG MÀU CHUẨN THƯƠNG HIỆU HAUTE COUTURE CỦA TOÀN APP
 private val LuxuryWine = DustyMerlot // Color(0xFF62202F) - Đỏ rượu Noble Burgundy Noir
-private val LuxuryBlushBg = Color(0xFFFDF4F2) // Nền hồng phấn cho bảo chứng an tâm
 private val LuxuryGold = ChampagneGold // Color(0xFFC6A15B) - Vàng champagne
 private val LuxuryCreamBg = WarmWhite // Color(0xFFFBF7E8) - Lụa nhung tơ tằm
 
@@ -76,6 +75,7 @@ fun ShopDetailScreen(
     shopId: String,
     onBack: () -> Unit,
     onSelectServiceForBooking: (shopId: String, serviceId: String) -> Unit,
+    onNavigateToChat: (shopName: String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ShopDetailViewModel = viewModel(factory = ViewModelFactory.Factory)
 ) {
@@ -351,22 +351,20 @@ fun ShopDetailScreen(
                                     Text(text = "Chỉ đường", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
                                 }
 
-                                // 3. Zalo Tư vấn
+                                // 3. Nhắn tin trực tiếp với shop
                                 OutlinedButton(
                                     onClick = {
-                                        val digits = shop.phone.replace(Regex("[^0-9]"), "")
-                                        val url = if (digits.isNotBlank()) "https://zalo.me/$digits" else "https://zalo.me"
-                                        try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (_: Exception) {}
+                                        onNavigateToChat(shop.name)
                                     },
                                     modifier = Modifier.weight(1f).height(38.dp),
                                     shape = RoundedCornerShape(19.dp),
                                     border = BorderStroke(1.dp, BorderSilk),
                                     colors = ButtonDefaults.outlinedButtonColors(contentColor = TextNoir),
-                                    contentPadding = PaddingValues(horizontal = 8.dp)
+                                    contentPadding = PaddingValues(horizontal = 6.dp)
                                 ) {
-                                    Icon(imageVector = Icons.Default.Chat, contentDescription = null, tint = Color(0xFF0284C7), modifier = Modifier.size(14.dp))
+                                    Icon(imageVector = Icons.Default.Chat, contentDescription = null, tint = LuxuryWine, modifier = Modifier.size(14.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text(text = "Zalo", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(text = "Nhắn tin", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
                                 }
 
                                 // 4. Chia sẻ
@@ -609,144 +607,6 @@ fun ShopDetailScreen(
                                         }
                                     }
                                 }
-
-                                // Kênh liên hệ & Mạng xã hội từ Excel
-                                item {
-                                    Card(
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp),
-                                        shape = RoundedCornerShape(16.dp),
-                                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                                    ) {
-                                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                            Text(text = "Thông tin liên hệ & Kênh truyền thông", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextNoir)
-
-                                            // Hotline
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color(0xFFF0FDF4)).padding(12.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                            ) {
-                                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                    Icon(imageVector = Icons.Default.Phone, contentDescription = null, tint = LuxuryWine, modifier = Modifier.size(18.dp))
-                                                    Text(text = "Hotline: ${shop.phone}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
-                                                }
-                                                Text(
-                                                    text = "Gọi ngay >",
-                                                    fontSize = 12.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = LuxuryWine,
-                                                    modifier = Modifier.clickable {
-                                                        try { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${shop.phone}"))) } catch (_: Exception) {}
-                                                    }
-                                                )
-                                            }
-
-                                            // Địa chỉ
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color(0xFFFEF2F2)).padding(12.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                            ) {
-                                                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                    Icon(imageVector = Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFFE11D48), modifier = Modifier.size(18.dp))
-                                                    Text(text = shop.address, fontSize = 12.5.sp, color = Color(0xFF991B1B), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                                }
-                                                Text(
-                                                    text = "Chỉ đường >",
-                                                    fontSize = 12.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = Color(0xFFE11D48),
-                                                    modifier = Modifier.clickable {
-                                                        try {
-                                                            val gmmIntentUri = Uri.parse("geo:${shop.lat},${shop.lng}?q=${Uri.encode(shop.address)}")
-                                                            context.startActivity(Intent(Intent.ACTION_VIEW, gmmIntentUri))
-                                                        } catch (_: Exception) {}
-                                                    }
-                                                )
-                                            }
-
-                                            // Giờ làm việc
-                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                Icon(imageVector = Icons.Default.Schedule, contentDescription = null, tint = Color(0xFF6B7280), modifier = Modifier.size(16.dp))
-                                                Text(text = "Giờ mở cửa: ${shop.openingHours} (Thứ 2 - Chủ nhật)", fontSize = 12.5.sp, color = Color(0xFF374151))
-                                            }
-
-                                            // Các nút link mạng xã hội
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                            ) {
-                                                if (!shop.facebook.isNullOrBlank() && shop.facebook != "-") {
-                                                    OutlinedButton(
-                                                        onClick = { try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(shop.facebook))) } catch (_: Exception) {} },
-                                                        modifier = Modifier.weight(1f).height(36.dp),
-                                                        shape = RoundedCornerShape(8.dp),
-                                                        contentPadding = PaddingValues(0.dp)
-                                                    ) {
-                                                        Text("Facebook", fontSize = 11.5.sp, color = Color(0xFF1877F2), fontWeight = FontWeight.Bold)
-                                                    }
-                                                }
-                                                if (!shop.tiktok.isNullOrBlank() && shop.tiktok != "-") {
-                                                    OutlinedButton(
-                                                        onClick = { try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(shop.tiktok))) } catch (_: Exception) {} },
-                                                        modifier = Modifier.weight(1f).height(36.dp),
-                                                        shape = RoundedCornerShape(8.dp),
-                                                        contentPadding = PaddingValues(0.dp)
-                                                    ) {
-                                                        Text("TikTok", fontSize = 11.5.sp, color = Color(0xFF111111), fontWeight = FontWeight.Bold)
-                                                    }
-                                                }
-                                                if (!shop.instagram.isNullOrBlank() && shop.instagram != "-") {
-                                                    OutlinedButton(
-                                                        onClick = { try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(shop.instagram))) } catch (_: Exception) {} },
-                                                        modifier = Modifier.weight(1f).height(36.dp),
-                                                        shape = RoundedCornerShape(8.dp),
-                                                        contentPadding = PaddingValues(0.dp)
-                                                    ) {
-                                                        Text("Instagram", fontSize = 11.5.sp, color = Color(0xFFE1306C), fontWeight = FontWeight.Bold)
-                                                    }
-                                                }
-                                                if (!shop.website.isNullOrBlank() && shop.website != "-") {
-                                                    OutlinedButton(
-                                                        onClick = { try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(shop.website))) } catch (_: Exception) {} },
-                                                        modifier = Modifier.weight(1f).height(36.dp),
-                                                        shape = RoundedCornerShape(8.dp),
-                                                        contentPadding = PaddingValues(0.dp)
-                                                    ) {
-                                                        Text("Website", fontSize = 11.5.sp, color = Color(0xFF0284C7), fontWeight = FontWeight.Bold)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // Tiện ích tiệm
-                                item {
-                                    Card(
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp),
-                                        shape = RoundedCornerShape(16.dp),
-                                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                                    ) {
-                                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                            Text(text = "Tiện ích & Dịch vụ đi kèm", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextNoir)
-                                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                items(listOf("Máy lạnh", "Trà thảo mộc miễn phí", "Wifi tốc độ cao", "Phòng VIP riêng tư", "Chỗ đậu xe máy", "Thanh toán VietQR")) { am ->
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .clip(RoundedCornerShape(8.dp))
-                                                            .background(Color(0xFFF3F4F6))
-                                                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                                                    ) {
-                                                        Text(text = am, fontSize = 11.5.sp, color = Color(0xFF374151))
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
                             }
 
                             // ══════════════ TAB 2: HÌNH ẢNH (GALLERY) ══════════════
@@ -928,46 +788,12 @@ fun ShopDetailScreen(
                         shadowElevation = 12.dp,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column(
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
                         ) {
-                            // Mini banner bảo chứng lịch hẹn sang trọng chuẩn thương hiệu
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(LuxuryBlushBg)
-                                    .border(1.dp, BorderSilk, RoundedCornerShape(10.dp))
-                                    .padding(horizontal = 12.dp, vertical = 7.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                    Icon(
-                                        imageVector = Icons.Default.Shield,
-                                        contentDescription = null,
-                                        tint = LuxuryWine,
-                                        modifier = Modifier.size(15.dp)
-                                    )
-                                    Text(
-                                        text = "Bảo chứng lịch hẹn: Giữ chỗ 100% · Cam kết an tâm",
-                                        fontSize = 11.5.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = LuxuryWine
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = LuxuryGold,
-                                    modifier = Modifier.size(15.dp)
-                                )
-                            }
-
-                            // Nút bấm chính "Chọn lịch ngay" (màu Grab Green)
+                            // Nút bấm chính "Chọn lịch ngay"
                             Button(
                                 onClick = {
                                     val firstService = services.firstOrNull()

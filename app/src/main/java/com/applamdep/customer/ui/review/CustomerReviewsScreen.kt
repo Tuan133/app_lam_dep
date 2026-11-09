@@ -139,7 +139,7 @@ private fun ReviewItemCard(review: Review) {
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Mã booking: ${review.bookingId}",
+                        text = "Đánh giá dịch vụ",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = GrabTextPrimary

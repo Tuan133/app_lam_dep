@@ -156,6 +156,13 @@ class MainActivity : ComponentActivity() {
                             } else when (currentRole) {
                                 0 -> { // Customer
                                     when {
+                                        activeChatName != null -> {
+                                            ChatDetailScreen(
+                                                chatName = activeChatName!!,
+                                                isMerchant = false,
+                                                onBack = { activeChatName = null }
+                                            )
+                                        }
                                         reviewingBookingId != null -> {
                                             com.applamdep.customer.ui.review.WriteReviewScreen(
                                                 bookingId = reviewingBookingId!!,
@@ -231,6 +238,9 @@ class MainActivity : ComponentActivity() {
                                                     bookingShopId = sId
                                                     bookingServiceId = srvId
                                                     selectedShopId = null
+                                                },
+                                                onNavigateToChat = { shopName ->
+                                                    activeChatName = shopName
                                                 },
                                                 modifier = Modifier.padding(innerPadding)
                                             )

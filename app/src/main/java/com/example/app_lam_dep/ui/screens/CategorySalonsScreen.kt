@@ -541,69 +541,15 @@ fun CategorySalonsScreen(
                             ) {
                                 Column {
                                     // Thumbnail trên (Ảnh đại diện salon)
-                                    Box(
+                                    val imgRes = com.applamdep.customer.core.util.ShopImageAssets.getShopDrawableRes(salon.id)
+                                    androidx.compose.foundation.Image(
+                                        painter = androidx.compose.ui.res.painterResource(id = imgRes),
+                                        contentDescription = salon.name,
+                                        contentScale = ContentScale.Crop,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(130.dp)
-                                    ) {
-                                        val imgRes = com.applamdep.customer.core.util.ShopImageAssets.getShopDrawableRes(salon.id)
-                                        androidx.compose.foundation.Image(
-                                            painter = androidx.compose.ui.res.painterResource(id = imgRes),
-                                            contentDescription = salon.name,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(
-                                                    Brush.verticalGradient(
-                                                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f))
-                                                    )
-                                                )
-                                        )
-
-                                        // Badge góc trên bên trái (TRỨ DANH)
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.TopStart)
-                                                .padding(8.dp)
-                                                .clip(RoundedCornerShape(6.dp))
-                                                .background(ChampagneGold)
-                                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                                        ) {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(2.dp)
-                                            ) {
-                                                GlowIcon(icon = GlowIcons.Crown, tint = Color.White, size = 9.dp)
-                                                Text(
-                                                    text = "TRỨ DANH",
-                                                    fontSize = 8.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = Color.White
-                                                )
-                                            }
-                                        }
-
-                                        // Badge cọc dưới cùng ảnh
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.BottomStart)
-                                                .padding(8.dp)
-                                                .clip(RoundedCornerShape(6.dp))
-                                                .background(DustyMerlot.copy(alpha = 0.9f))
-                                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                                        ) {
-                                            Text(
-                                                text = if (salon.requiresDeposit) "ƯU ĐÃI CỌC 30K" else "MIỄN CỌC 0Đ",
-                                                fontSize = 8.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = PinkPanther
-                                            )
-                                        }
-                                    }
+                                    )
 
                                     // Thông tin dưới
                                     Column(
@@ -628,23 +574,6 @@ fun CategorySalonsScreen(
                                                 text = "${salon.eta} • ${salon.distance}",
                                                 fontSize = 10.5.sp,
                                                 color = TextMuted
-                                            )
-                                        }
-
-                                        Row(
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(4.dp))
-                                                .background(PinkPanther.copy(alpha = 0.4f))
-                                                .padding(horizontal = 5.dp, vertical = 2.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(3.dp)
-                                        ) {
-                                            GlowIcon(icon = GlowIcons.Tag, tint = DustyMerlot, size = 9.dp)
-                                            Text(
-                                                text = "Giảm 30K cọc",
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = DustyMerlot
                                             )
                                         }
                                     }
@@ -801,55 +730,6 @@ private fun GrabStyleSalonDetailCard(
                         )
                         Text(text = "•", fontSize = 11.sp, color = TextMuted)
                         Text(text = "${salon.distance} • ${salon.eta}", fontSize = 11.sp, color = TextMuted)
-                    }
-
-                    // Huy hiệu "Quán trứ danh Grab" -> "★ Salon Trứ Danh Glow >"
-                    if (salon.isSignatureBadge) {
-                        Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(Color(0xFFFFF7DF))
-                                .border(0.75.dp, ChampagneGold.copy(alpha = 0.8f), RoundedCornerShape(6.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(3.dp)
-                        ) {
-                            GlowIcon(icon = GlowIcons.StarFilled, tint = ChampagneGold, size = 10.dp)
-                            Text(
-                                text = salon.signatureBadgeText,
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF6B4800)
-                            )
-                            GlowIcon(icon = GlowIcons.ChevronRight, tint = Color(0xFF6B4800), size = 10.dp)
-                        }
-                    }
-
-                    // Voucher chip (Giảm 18.000đ đơn từ 80k...)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFF7F2EE))
-                            .border(0.75.dp, Color(0xFFEBDCD3), RoundedCornerShape(8.dp))
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        IconMedallion(
-                            icon = GlowIcons.Tag,
-                            size = 18.dp,
-                            iconSize = 10.dp,
-                            tint = DustyMerlot
-                        )
-                        Text(
-                            text = salon.promoVoucher,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = DustyMerlot,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
                     }
                 }
             }

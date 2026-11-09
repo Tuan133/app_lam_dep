@@ -83,28 +83,6 @@ fun BookingConfirmationScreen(
             // Thẻ vé tóm tắt
             GrabCard(modifier = Modifier.fillMaxWidth()) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Mã đặt lịch:",
-                        fontSize = 13.sp,
-                        color = GrabTextSecondary
-                    )
-                    Text(
-                        text = bookingId,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = GrabGreenDark
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider(color = GrabBorder)
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(vertical = 4.dp)
                 ) {

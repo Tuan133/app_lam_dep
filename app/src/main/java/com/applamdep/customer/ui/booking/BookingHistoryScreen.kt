@@ -79,7 +79,7 @@ fun BookingHistoryScreen(
                             color = TextNoir
                         )
                         Text(
-                            text = "Theo dõi tiến trình & bảo chứng cọc HELD",
+                            text = "Theo dõi tiến trình lịch hẹn",
                             fontSize = 11.5.sp,
                             color = TextMuted,
                             fontWeight = FontWeight.Normal
@@ -414,35 +414,12 @@ private fun BookingTicketItem(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Dòng 1: Mã vé + Trạng thái
+            // Dòng 1: Trạng thái lịch hẹn
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Mã booking phong cách Concierge Pass
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFFAF2EE))
-                        .border(1.dp, Color(0xFFEFE2DB), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    GlowIcon(
-                        icon = GlowIcons.Tag,
-                        tint = ChampagneGold,
-                        size = 12.dp
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "#${booking.id}",
-                        fontSize = 12.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextNoir
-                    )
-                }
-
                 BookingStatusChip(status = booking.status)
             }
 
@@ -590,21 +567,6 @@ private fun BookingTicketItem(
                         color = Color(0xFF8B1538),
                         fontWeight = FontWeight.SemiBold
                     )
-                    Spacer(modifier = Modifier.weight(1f))
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFFFFFDF8))
-                            .border(0.8.dp, Color(0xFFE8D3A5), RoundedCornerShape(6.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "BẢO CHỨNG",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = ChampagneGold
-                        )
-                    }
                 }
             }
 
