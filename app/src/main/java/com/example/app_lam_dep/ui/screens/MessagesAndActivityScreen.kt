@@ -1,5 +1,6 @@
 package com.example.app_lam_dep.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
@@ -229,22 +231,6 @@ fun MessagesAndActivityScreen(
                     )
                 }
             }
-
-            // Compose new message button
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .clickable { },
-                contentAlignment = Alignment.Center
-            ) {
-                GlowIcon(
-                    icon = GlowIcons.EditPencil,
-                    tint = Color(0xFF6B1228),
-                    size = 20.dp,
-                    contentDescription = "Soạn tin nhắn"
-                )
-            }
         }
 
         if (selectedTab == 0) {
@@ -410,6 +396,8 @@ fun MessagesAndActivityScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(filteredConversations) { conv ->
+                    val isUnread = conv.unreadCount > 0 || conv.hasUnreadDot
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -418,8 +406,11 @@ fun MessagesAndActivityScreen(
                                 onChatClick(conv.name) 
                             },
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isUnread) Color(0xFFFBECE8) else Color.White
+                        ),
+                        border = if (isUnread) BorderStroke(1.2.dp, Color(0xFFF0CBC3)) else null,
+                        elevation = CardDefaults.cardElevation(defaultElevation = if (isUnread) 2.dp else 1.dp)
                     ) {
                         Row(
                             modifier = Modifier
@@ -449,7 +440,7 @@ fun MessagesAndActivityScreen(
                                 modifier = Modifier
                                     .size(48.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFFF9EFEF)),
+                                    .background(if (isUnread) Color(0xFFF6D8D5) else Color(0xFFF9EFEF)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 val icon = when {
@@ -482,35 +473,22 @@ fun MessagesAndActivityScreen(
                             // Message info & snippet
                             Column(
                                 modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(3.dp)
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Text(
                                     text = conv.name,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    color = Color(0xFF24090F)
+                                    fontWeight = if (isUnread) FontWeight.Black else FontWeight.Normal,
+                                    fontSize = if (isUnread) 15.sp else 14.sp,
+                                    color = if (isUnread) Color(0xFF140306) else Color(0xFF5A484C)
                                 )
                                 Text(
                                     text = conv.snippet,
-                                    fontSize = 12.sp,
-                                    color = Color(0xFF7A686D),
-                                    maxLines = 1
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isUnread) Color(0xFF140306) else Color(0xFF7A686D),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
-
-                                // Tag pill (Khách hàng / Salon / Hệ thống)
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(Color(0xFFFCEEEB))
-                                        .padding(horizontal = 7.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = conv.tag,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Color(0xFF6B1228)
-                                    )
-                                }
                             }
 
                             // Time & Unread Badge
@@ -521,7 +499,8 @@ fun MessagesAndActivityScreen(
                                 Text(
                                     text = conv.time,
                                     fontSize = 11.sp,
-                                    color = Color(0xFF9E8A90)
+                                    fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isUnread) Color(0xFF6B1228) else Color(0xFF9E8A90)
                                 )
 
                                 if (conv.unreadCount > 0) {

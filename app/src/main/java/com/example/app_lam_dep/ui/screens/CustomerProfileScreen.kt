@@ -139,22 +139,6 @@ fun CustomerProfileScreen(
                                 fontSize = 11.5.sp,
                                 lineHeight = 16.sp
                             )
-
-                            Row(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFF23040C))
-                                    .padding(horizontal = 8.dp, vertical = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                GlowIcon(icon = GlowIcons.Check, tint = Color(0xFF4ADE80), size = 10.dp)
-                                Text(
-                                    text = "Đã xác thực tài khoản chính chủ",
-                                    color = Color(0xFFE5B8C2),
-                                    fontSize = 10.sp
-                                )
-                            }
                         }
 
                         // Arched VIP Accent Image

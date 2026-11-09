@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,6 +32,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -102,16 +104,19 @@ fun DraggableFloatingAiButton(
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.spacedBy((-2).dp)
             ) {
-                GlowIcon(icon = GlowIcons.Sparkle, tint = GoldSoft, size = 22.dp)
-                Spacer(modifier = Modifier.height(2.dp))
+                GlowIcon(
+                    icon = GlowIcons.Sparkle,
+                    tint = GoldSoft,
+                    size = 24.dp
+                )
                 Text(
                     text = "AI GLOW",
-                    fontSize = 8.sp,
+                    fontSize = 8.5.sp,
                     fontWeight = FontWeight.Black,
                     color = Color.White,
-                    letterSpacing = 0.5.sp
+                    letterSpacing = 0.6.sp
                 )
             }
         }
@@ -156,7 +161,7 @@ fun AiShopAdvisorSheet(
             listOf(
                 ChatMessage(
                     isAi = true,
-                    text = "Xin chào quý khách! Em là Trợ lý AI GLOW ✨. Em được nạp toàn bộ dữ liệu 11 salon làm đẹp thực tế tại Đà Nẵng (tri thức từ file Excel). Em có thể giúp bạn tìm tiệm nail, uốn tóc, spa gội đầu, trị mụn hoặc lọc tiệm MIỄN CỌC 0Đ theo yêu cầu!",
+                    text = "Dạ em chào quý khách! Em là Trợ lý AI GLOW ✨. Em có thể giúp bạn tìm salon uy tín, chọn dịch vụ phù hợp hoặc lọc tiệm giữ chỗ 0đ không cần cọc.",
                     recommendations = initialRag.recommendations
                 )
             )
@@ -260,28 +265,47 @@ fun AiShopAdvisorSheet(
                     .background(DustyMerlot)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(38.dp)
                         .clip(CircleShape)
                         .background(Brush.linearGradient(listOf(ChampagneGold, GoldSoft))),
                     contentAlignment = Alignment.Center
                 ) {
-                    GlowIcon(icon = GlowIcons.Sparkle, tint = DustyMerlot, size = 18.dp)
+                    GlowIcon(icon = GlowIcons.Sparkle, tint = DustyMerlot, size = 20.dp)
                 }
+
                 Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Trợ Lý AI GLOW",
+                            fontSize = 15.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (hasGeminiKey) Color(0x334ADE80) else Color(0x33FFD700))
+                                .padding(horizontal = 7.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = if (hasGeminiKey) "● Trực tuyến" else "● AI Sẵn sàng",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (hasGeminiKey) Color(0xFF86EFAC) else ChampagneGold
+                            )
+                        }
+                    }
                     Text(
-                        text = "Trợ Lý AI GLOW • RAG Thông Minh",
-                        fontSize = 14.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    Text(
-                        text = if (hasGeminiKey) "Google Gemini Live • Dữ liệu 11 Salon Excel" else "RAG Cục Bộ • Bấm bánh răng ⚙️ để thêm Gemini Key",
-                        fontSize = 10.5.sp,
-                        color = PinkPanther
+                        text = if (hasGeminiKey) "Tư vấn làm đẹp & Đặt lịch thông minh" else "Tư vấn làm đẹp • Sẵn sàng hỗ trợ",
+                        fontSize = 11.sp,
+                        color = Color(0xFFF3D5DC)
                     )
                 }
 
@@ -297,30 +321,15 @@ fun AiShopAdvisorSheet(
                         modifier = Modifier.size(20.dp)
                     )
                 }
-
-                // Trạng thái AI
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (hasGeminiKey) SuccessGreen.copy(alpha = 0.25f) else ChampagneGold.copy(alpha = 0.25f))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = if (hasGeminiKey) "Gemini Live" else "RAG Ready",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (hasGeminiKey) SuccessGreen else ChampagneGold
-                    )
-                }
             }
 
             // Quick Prompt Chips theo tập dữ liệu 11 Salon
             val promptChips = listOf(
-                "💅 Tiệm Nail ở Hải Châu",
+                "💅 Tiệm Nail tại Hải Châu",
                 "🌿 Gội đầu dưỡng sinh thư giãn",
-                "💆‍♀️ Trị mụn phục hồi da uy tín",
-                "✂️ Uốn tóc sóng lơi Hàn Quốc",
                 "🎉 Tiệm giữ chỗ 0đ không cần cọc",
+                "💆‍♀️ Trị mụn & Phục hồi da",
+                "✂️ Uốn tóc sóng lơi Hàn Quốc",
                 "🌙 Tiệm mở cửa muộn sau 20h"
             )
 
@@ -333,9 +342,9 @@ fun AiShopAdvisorSheet(
                 items(promptChips) { chip ->
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(18.dp))
                             .background(Color.White)
-                            .border(1.dp, ChampagneGold.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                            .border(1.dp, Color(0xFFEADBCE), RoundedCornerShape(18.dp))
                             .clickable {
                                 if (!isThinking) {
                                     val userText = chip
@@ -412,15 +421,14 @@ fun AiShopAdvisorSheet(
                                 Card(
                                     shape = RoundedCornerShape(16.dp),
                                     colors = CardDefaults.cardColors(containerColor = Color.White),
-                                    elevation = CardDefaults.cardElevation(2.dp),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(start = 36.dp)
+                                    elevation = CardDefaults.cardElevation(1.5.dp),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Column(
                                         modifier = Modifier.padding(12.dp),
-                                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                                        verticalArrangement = Arrangement.spacedBy(7.dp)
                                     ) {
+                                        // Row 1: Tên salon + Đánh giá sao
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -430,37 +438,92 @@ fun AiShopAdvisorSheet(
                                                 text = rec.salonName,
                                                 fontSize = 13.5.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = DustyMerlot,
-                                                modifier = Modifier.weight(1f)
+                                                color = Color(0xFF24090F),
+                                                modifier = Modifier.weight(1f),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                             Row(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(Color(0xFFFFF9E6))
+                                                    .padding(horizontal = 6.dp, vertical = 2.dp),
                                                 verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                                horizontalArrangement = Arrangement.spacedBy(3.dp)
                                             ) {
-                                                GlowIcon(icon = GlowIcons.StarFilled, tint = ChampagneGold, size = 12.dp)
-                                                Text(text = "${rec.rating}", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF24090F))
+                                                GlowIcon(icon = GlowIcons.StarFilled, tint = Color(0xFFD4A017), size = 11.dp)
+                                                Text(
+                                                    text = "${rec.rating}",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFF7A5800)
+                                                )
                                             }
                                         }
 
-                                        Text(text = "✨ Dịch vụ gợi ý: ${rec.serviceSuggestion}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF3A101A))
-                                        Text(text = "📍 ${rec.distance}", fontSize = 11.sp, color = TextMuted)
-                                        Text(text = "💡 ${rec.matchReason}", fontSize = 11.sp, color = Color(0xFF4B5563), maxLines = 2)
-
-                                        // Deposit badge
-                                        Box(
+                                        // Row 2: Dịch vụ gợi ý nổi bật
+                                        Row(
                                             modifier = Modifier
-                                                .clip(RoundedCornerShape(6.dp))
-                                                .background(if (rec.requiresDeposit) PinkPanther.copy(alpha = 0.5f) else SuccessGreen.copy(alpha = 0.15f))
-                                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(Color(0xFFFAF2EE))
+                                                .padding(horizontal = 8.dp, vertical = 5.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(5.dp)
                                         ) {
+                                            GlowIcon(icon = GlowIcons.Sparkle, tint = Color(0xFF882C42), size = 12.dp)
                                             Text(
-                                                text = if (rec.requiresDeposit) "📌 ${rec.depositInfo}" else "🎉 Không cần cọc • Giữ chỗ miễn phí",
-                                                fontSize = 10.5.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (rec.requiresDeposit) DustyMerlot else SuccessGreen
+                                                text = rec.serviceSuggestion,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFF5A1525),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                         }
 
+                                        // Row 3: Khoảng cách & Chính sách cọc
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                            ) {
+                                                Text(text = "📍", fontSize = 10.sp)
+                                                Text(text = rec.distance, fontSize = 11.sp, color = Color(0xFF6B585D))
+                                            }
+
+                                            Text(text = "•", fontSize = 10.sp, color = Color(0xFFD5C4C8))
+
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(if (rec.requiresDeposit) Color(0xFFFCEEEC) else Color(0xFFE8F5E9))
+                                                    .padding(horizontal = 7.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = if (rec.requiresDeposit) rec.depositInfo else "Miễn cọc 0đ • Giữ chỗ",
+                                                    fontSize = 10.5.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (rec.requiresDeposit) Color(0xFF8B263E) else Color(0xFF2E7D32)
+                                                )
+                                            }
+                                        }
+
+                                        // Row 4: Mô tả lý do gợi ý (tinh gọn)
+                                        Text(
+                                            text = rec.matchReason,
+                                            fontSize = 11.sp,
+                                            color = Color(0xFF5A4D51),
+                                            lineHeight = 15.sp,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+
+                                        // Row 5: Nút hành động
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -469,7 +532,8 @@ fun AiShopAdvisorSheet(
                                                 onClick = { onNavigateToSalon(rec.salonName) },
                                                 shape = RoundedCornerShape(8.dp),
                                                 modifier = Modifier.weight(1f).height(32.dp),
-                                                contentPadding = PaddingValues(0.dp)
+                                                contentPadding = PaddingValues(0.dp),
+                                                border = BorderStroke(1.dp, DustyMerlot)
                                             ) {
                                                 Text("Xem Shop", fontSize = 11.sp, color = DustyMerlot, fontWeight = FontWeight.Bold)
                                             }
@@ -552,7 +616,7 @@ fun AiShopAdvisorSheet(
                 OutlinedTextField(
                     value = queryText,
                     onValueChange = { queryText = it },
-                    placeholder = { Text("Hỏi AI (Ví dụ: tiệm nail gần đây, spa không cọc...)", fontSize = 11.5.sp, color = TextMuted) },
+                    placeholder = { Text("Hỏi AI (tiệm nail, spa gội đầu, miễn cọc...)", fontSize = 11.5.sp, color = TextMuted) },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(20.dp),
                     colors = OutlinedTextFieldDefaults.colors(
