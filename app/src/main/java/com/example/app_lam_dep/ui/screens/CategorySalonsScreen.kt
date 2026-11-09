@@ -725,7 +725,7 @@ private fun GrabStyleSalonDetailCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                // Thumbnail vuông bo góc hiển thị ảnh salon thực tế (Thay thế cho placeholder crown)
+                // Thumbnail vuông bo góc hiển thị ảnh salon thực tế
                 Box(
                     modifier = Modifier
                         .size(86.dp)
@@ -741,25 +741,6 @@ private fun GrabStyleSalonDetailCard(
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
                     )
-
-                    // Tag cọc góc dưới
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .background(Color.Black.copy(alpha = 0.65f))
-                            .padding(vertical = 2.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (salon.requiresDeposit) "CÓ CỌC" else "MIỄN CỌC 0Đ",
-                            fontSize = 7.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (salon.requiresDeposit) GoldSoft else SuccessGreen,
-                            maxLines = 1,
-                            softWrap = false
-                        )
-                    }
                 }
 
                 // Cột thông tin chi tiết
