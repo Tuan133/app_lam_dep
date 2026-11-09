@@ -34,20 +34,20 @@ fun BottomNavigationBar(
             )
         }
         1 -> {
-            // Partner Tabs (Matching Image 2: Trang chủ, Lịch, Tin nhắn, Tôi)
+            // Partner Tabs (Matching Image 2: Trang chủ, Lịch, Thông báo, Tôi)
             listOf(
                 NavTab("Trang chủ", GlowIcons.Home),
                 NavTab("Lịch", GlowIcons.Calendar),
-                NavTab("Tin nhắn", GlowIcons.Chat),
+                NavTab("Thông báo", GlowIcons.Bell),
                 NavTab("Tôi", GlowIcons.Settings)
             )
         }
         else -> {
-            // Customer Tabs (Matching Image 1: Khám phá, Lịch, Tin nhắn, Tôi)
+            // Customer Tabs (Matching Image 1: Khám phá, Lịch, Thông báo, Tôi)
             listOf(
                 NavTab("Khám phá", GlowIcons.Sparkle),
                 NavTab("Lịch", GlowIcons.Calendar),
-                NavTab("Tin nhắn", GlowIcons.Chat),
+                NavTab("Thông báo", GlowIcons.Bell),
                 NavTab("Tôi", GlowIcons.User)
             )
         }

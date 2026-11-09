@@ -60,7 +60,7 @@ fun MessagesAndActivityScreen(
     }
     val allMessagesMap by RealtimeChatRepository.messagesFlow.collectAsState()
 
-    var selectedTab by remember { mutableStateOf(1) } // 0: Hoạt động, 1: Tin nhắn (Default matching Image 2)
+    var selectedTab by remember { mutableStateOf(0) } // 0: Thông báo, 1: Tin nhắn
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("Tất cả") }
     var readConversationIds by remember { mutableStateOf(setOf<Int>()) }
@@ -187,13 +187,13 @@ fun MessagesAndActivityScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
-                // Tab "Hoạt động"
+                // Tab "Thông báo"
                 Column(
                     modifier = Modifier.clickable { selectedTab = 0 },
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Hoạt động",
+                        text = "Thông báo",
                         fontSize = 17.sp,
                         fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Medium,
                         color = if (selectedTab == 0) Color(0xFF6B1228) else Color(0xFF7A686D)
@@ -257,7 +257,7 @@ fun MessagesAndActivityScreen(
             ) {
                 item {
                     Text(
-                        text = "Cập nhật hoạt động & Nhắc hẹn",
+                        text = "Cập nhật thông báo & Nhắc hẹn",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF24090F)
