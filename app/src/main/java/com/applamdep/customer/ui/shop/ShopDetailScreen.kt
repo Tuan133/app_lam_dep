@@ -171,60 +171,24 @@ fun ShopDetailScreen(
                                         )
                                     }
 
-                                    // Nhóm nút phải (Yêu thích & Đặt lịch / Chia sẻ)
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                    // Nút Yêu thích bên phải
+                                    Box(
+                                        modifier = Modifier
+                                            .size(38.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.White.copy(alpha = 0.92f))
+                                            .clickable {
+                                                isFavorite = !isFavorite
+                                                Toast.makeText(context, if (isFavorite) "Đã lưu vào danh sách yêu thích ❤️" else "Đã bỏ yêu thích", Toast.LENGTH_SHORT).show()
+                                            },
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        // Nút Yêu thích
-                                        Box(
-                                            modifier = Modifier
-                                                .size(38.dp)
-                                                .clip(CircleShape)
-                                                .background(Color.White.copy(alpha = 0.92f))
-                                                .clickable {
-                                                    isFavorite = !isFavorite
-                                                    Toast.makeText(context, if (isFavorite) "Đã lưu vào danh sách yêu thích ❤️" else "Đã bỏ yêu thích", Toast.LENGTH_SHORT).show()
-                                                },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                                contentDescription = "Favorite",
-                                                tint = if (isFavorite) Color(0xFFE11D48) else Color(0xFF1F2937),
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                        }
-
-                                        // Nút Pill "Đặt lịch hẹn" kiểu Grab "Giao hàng"
-                                        Surface(
-                                            shape = RoundedCornerShape(19.dp),
-                                            color = Color.White.copy(alpha = 0.92f),
-                                            shadowElevation = 2.dp,
-                                            modifier = Modifier.clickable {
-                                                val firstService = services.firstOrNull()
-                                                onSelectServiceForBooking(shop.id, firstService?.id ?: "srv_01")
-                                            }
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.CalendarMonth,
-                                                    contentDescription = null,
-                                                    tint = LuxuryWine,
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                                Text(
-                                                    text = "Đặt lịch hẹn",
-                                                    fontSize = 12.5.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = Color(0xFF1F2937)
-                                                )
-                                            }
-                                        }
+                                        Icon(
+                                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                            contentDescription = "Favorite",
+                                            tint = if (isFavorite) Color(0xFFE11D48) else Color(0xFF1F2937),
+                                            modifier = Modifier.size(20.dp)
+                                        )
                                     }
                                 }
                             }
