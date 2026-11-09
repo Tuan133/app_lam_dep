@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glow Beauty Pay - Cổng thanh toán giả lập</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+        body {
+            background-color: #F7F9FA;
+            color: #1C1C1E;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 16px;
+        }
+        .payment-card {
+            background: #FFFFFF;
+            width: 100%;
+            max-width: 420px;
+            border-radius: 20px;
+            padding: 28px 24px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            border: 1px solid #E8ECEF;
+            text-align: center;
+        }
+        .brand-badge {
+            display: inline-block;
+            background: #E8F8EE;
+            color: #00893C;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 6px 14px;
+            border-radius: 20px;
+            margin-bottom: 16px;
+        }
+        h1 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        p.subtitle {
+            font-size: 13px;
+            color: #6C727A;
+            margin-bottom: 24px;
+        }
+        .amount-box {
+            background: #F8F9FA;
+            border: 1.5px dashed #00B14F;
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .amount-label {
+            font-size: 12px;
+            color: #6C727A;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .amount-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: #00B14F;
+        }
+        .tx-details {
+            text-align: left;
+            margin-bottom: 24px;
+            border-top: 1px solid #E8ECEF;
+            padding-top: 16px;
+        }
+        .tx-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+        .tx-label {
+            color: #6C727A;
+        }
+        .tx-value {
+            font-weight: 600;
+            color: #1C1C1E;
+        }
+        .btn-confirm {
+            background: #00B14F;
+            color: white;
+            border: none;
+            width: 100%;
+            height: 50px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-confirm:hover {
+            background: #00893C;
+        }
+        .success-box {
+            display: none;
+            padding: 20px;
+        }
+        .success-icon {
+            width: 60px;
+            height: 60px;
+            background: #00B14F;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            color: white;
+            font-size: 32px;
+        }
+    </style>
+</head>
+<body>
+    <div class="payment-card">
+        <div id="payment-view">
+            <span class="brand-badge">SÀN LÀM ĐẸP GLOW BEAUTY</span>
+            <h1>Cổng thanh toán giả lập</h1>
+            <p class="subtitle">Mô phỏng thanh toán quét mã QR (VietQR / Webhook)</p>
+
+            <div class="amount-box">
+                <div class="amount-label">Số tiền cần thanh toán</div>
+                <div class="amount-value" id="amount-text">500.000 đ</div>
+            </div>
+
+            <div class="tx-details">
+                <div class="tx-row">
+                    <span class="tx-label">Mã giao dịch:</span>
+                    <span class="tx-value" id="tx-id">TX-TOP-DEMO</span>
+                </div>
+                <div class="tx-row">
+                    <span class="tx-label">Nội dung:</span>
+                    <span class="tx-value" id="tx-note">Nạp tiền Ví GLOW Pay</span>
+                </div>
+                <div class="tx-row">
+                    <span class="tx-label">Trạng thái:</span>
+                    <span class="tx-value" style="color: #F2994A;">PENDING (Đang chờ)</span>
+                </div>
+            </div>
+
+            <button class="btn-confirm" id="btn-submit" onclick="confirmPayment()">
+                Xác nhận đã thanh toán
+            </button>
+        </div>
+
+        <div id="success-view" class="success-box">
+            <div class="success-icon">✓</div>
+            <h2 style="color: #00B14F; margin-bottom: 8px;">Thanh toán thành công!</h2>
+            <p style="font-size: 13px; color: #6C727A; margin-bottom: 16px;">
+                Giao dịch đã được ghi nhận. Ứng dụng Customer App sẽ tự động cập nhật số dư trong giây lát.
+            </p>
+            <p style="font-size: 12px; color: #9EA3A8;">Bạn có thể đóng trang này để quay lại app.</p>
+        </div>
+    </div>
+
+    <script>
+        // Lấy thông tin từ Query Params: ?txId=...&amount=...
+        const urlParams = new URLSearchParams(window.location.search);
+        const txId = urlParams.get('txId') || 'TX-TOP-' + Math.floor(Math.random() * 90000 + 10000);
+        const amount = urlParams.get('amount') || 500000;
+        const note = urlParams.get('note') || 'Nạp ví GLOW Pay';
+
+        document.getElementById('tx-id').innerText = txId;
+        document.getElementById('tx-note').innerText = note;
+        document.getElementById('amount-text').innerText = new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
+
+        function confirmPayment() {
+            const btn = document.getElementById('btn-submit');
+            btn.innerText = 'Đang xử lý...';
+            btn.disabled = true;
+
+            setTimeout(() => {
+                document.getElementById('payment-view').style.display = 'none';
+                document.getElementById('success-view').style.display = 'block';
+
+                // Nếu có webhook backend / Firestore update:
+                // fetch('/api/payment/confirm?txId=' + txId, { method: 'POST' });
+
+                // Nếu mở trong WebView Android có cầu nối Javascript:
+                if (window.Android && window.Android.onPaymentConfirmed) {
+                    window.Android.onPaymentConfirmed(txId);
+                }
+            }, 800);
+        }
+    </script>
+</body>
+</html>
