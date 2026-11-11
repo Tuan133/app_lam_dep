@@ -25,7 +25,10 @@ class MerchantViewModelFactory(
             }
             modelClass.isAssignableFrom(MerchantProfileViewModel::class.java) -> {
                 MerchantProfileViewModel(
-                    shopRepository = container.shopRepository
+                    shopRepository = container.shopRepository,
+                    bookingRepository = container.bookingRepository,
+                    transactionRepository = container.transactionRepository,
+                    scheduleRepository = container.scheduleRepository
                 ) as T
             }
             modelClass.isAssignableFrom(com.applamdep.merchant.ui.service.MerchantServiceViewModel::class.java) -> {
@@ -37,7 +40,8 @@ class MerchantViewModelFactory(
             modelClass.isAssignableFrom(com.applamdep.merchant.ui.schedule.MerchantScheduleViewModel::class.java) -> {
                 com.applamdep.merchant.ui.schedule.MerchantScheduleViewModel(
                     scheduleRepository = container.scheduleRepository,
-                    slotRepository = container.slotRepository
+                    slotRepository = container.slotRepository,
+                    bookingRepository = container.bookingRepository
                 ) as T
             }
             modelClass.isAssignableFrom(com.applamdep.merchant.ui.booking.MerchantBookingViewModel::class.java) -> {
@@ -60,7 +64,8 @@ class MerchantViewModelFactory(
                 com.applamdep.merchant.ui.dashboard.MerchantDashboardViewModel(
                     shopRepository = container.shopRepository,
                     statsRepository = container.statsRepository,
-                    bookingRepository = container.bookingRepository
+                    bookingRepository = container.bookingRepository,
+                    transactionRepository = container.transactionRepository
                 ) as T
             }
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

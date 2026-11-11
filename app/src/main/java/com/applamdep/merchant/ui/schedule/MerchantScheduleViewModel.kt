@@ -3,20 +3,29 @@ package com.applamdep.merchant.ui.schedule
 import androidx.lifecycle.viewModelScope
 import com.applamdep.merchant.core.base.BaseViewModel
 import com.applamdep.merchant.core.base.UiState
+import com.applamdep.merchant.data.repository.BookingRepositoryImpl
 import com.applamdep.merchant.data.repository.ScheduleRepositoryImpl
 import com.applamdep.merchant.data.repository.SlotRepositoryImpl
+import com.applamdep.merchant.domain.model.Booking
 import com.applamdep.merchant.domain.model.SlotItem
 import com.applamdep.merchant.domain.model.WorkSchedule
+import com.applamdep.merchant.domain.repository.BookingRepository
 import com.applamdep.merchant.domain.repository.ScheduleRepository
 import com.applamdep.merchant.domain.repository.SlotRepository
 import com.applamdep.merchant.domain.rule.ScheduleSlotGenerator
 import com.applamdep.merchant.domain.rule.ScheduleValidator
+import com.applamdep.merchant.domain.rule.SlotBookingSynchronizer
 import com.applamdep.merchant.domain.rule.SlotCapacityRule
+import com.applamdep.merchant.domain.rule.SlotEditValidator
 import com.applamdep.merchant.domain.rule.SlotFilterPolicy
 import com.applamdep.merchant.domain.rule.SlotFilterType
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
@@ -27,20 +36,23 @@ data class ScheduleScreenData(
     val schedule: WorkSchedule,
     val slots: List<SlotItem>,
     val filteredSlots: List<SlotItem>,
-    val activeFilter: SlotFilterType = SlotFilterType.ALL
+    val activeFilter: SlotFilterType = SlotFilterType.ALL,
+    val slotBookings: Map<String, List<Booking>> = emptyMap()
 )
 
 /**
  * 2. TÍNH CHẤT OOP: KẾ THỪA (Inheritance) - Kế thừa BaseViewModel
- * 4. TÍNH CHẤT OOP: TRỪU TƯỢNG (Abstraction) - Phụ thuộc ScheduleRepository & SlotRepository
+ * 4. TÍNH CHẤT OOP: TRỪU TƯỢNG (Abstraction) - Phụ thuộc ScheduleRepository, SlotRepository & BookingRepository
  * ViewModel điều phối:
  * - Chức năng 4: Quản lý ca làm việc (Ngày trong tuần, giờ mở/đóng cửa, giờ nghỉ trưa, ngày nghỉ lễ)
  * - Chức năng 5: Quản lý khung giờ trống (Slots) theo ngày, điều chỉnh sức chứa (Capacity) với quy tắc
- *   nghiêm ngặt không giảm dưới số khách đã đặt trước, và khóa/mở nhận khách từng khung giờ.
+ *   nghiêm ngặt không giảm dưới số khách đã đặt trước, đồng bộ đơn hàng thực tế theo từng slot,
+ *   và khóa/mở nhận khách từng khung giờ.
  */
 class MerchantScheduleViewModel(
     private val scheduleRepository: ScheduleRepository = ScheduleRepositoryImpl(),
     private val slotRepository: SlotRepository = SlotRepositoryImpl(),
+    private val bookingRepository: BookingRepository = BookingRepositoryImpl(),
     private val legacyMerchantRepository: com.applamdep.merchant.domain.repository.MerchantRepository? = null
 ) : BaseViewModel<ScheduleScreenData>() {
 
@@ -48,15 +60,20 @@ class MerchantScheduleViewModel(
     constructor(merchantRepository: com.applamdep.merchant.domain.repository.MerchantRepository) : this(
         scheduleRepository = ScheduleRepositoryImpl(),
         slotRepository = SlotRepositoryImpl(),
+        bookingRepository = BookingRepositoryImpl(),
         legacyMerchantRepository = merchantRepository
     )
 
     private val scheduleValidator = ScheduleValidator()
     private val slotCapacityRule = SlotCapacityRule()
+    private val slotEditValidator = SlotEditValidator(slotCapacityRule)
     private val slotGenerator = ScheduleSlotGenerator()
     private val slotFilterPolicy = SlotFilterPolicy()
+    private val slotBookingSynchronizer = SlotBookingSynchronizer(
+        defaultSeededDate = SlotRepositoryImpl.DEFAULT_SEEDED_DATE
+    )
 
-    private val _selectedDate = MutableStateFlow("2026-10-29")
+    private val _selectedDate = MutableStateFlow(SlotRepositoryImpl.DEFAULT_SEEDED_DATE)
     val selectedDate: StateFlow<String> = _selectedDate.asStateFlow()
 
     private val _slotFilter = MutableStateFlow(SlotFilterType.ALL)
@@ -64,32 +81,80 @@ class MerchantScheduleViewModel(
 
     private var currentSchedule: WorkSchedule = WorkSchedule()
     private var allSlotsForDate: List<SlotItem> = emptyList()
+    private var currentSlotBookings: Map<String, List<Booking>> = emptyMap()
+    private var observeJob: Job? = null
 
     fun loadScheduleAndSlots(shopId: String = "shop_01") {
-        launchWithLoading {
-            scheduleRepository.getSchedule(shopId).collect { sched ->
-                currentSchedule = sched
-                slotRepository.getSlots(shopId, _selectedDate.value).collect { slots ->
-                    allSlotsForDate = slots
-                    emitSuccessState()
+        observeJob?.cancel()
+        observeJob = viewModelScope.launch {
+            updateState(UiState.Loading)
+            try {
+                _selectedDate.collectLatest { date ->
+                    combine(
+                        scheduleRepository.getSchedule(shopId),
+                        slotRepository.getSlots(shopId, date),
+                        bookingRepository.getShopBookings(shopId),
+                        _slotFilter
+                    ) { sched, slots, bookings, filter ->
+                        buildScreenData(
+                            schedule = sched,
+                            slots = slots,
+                            allBookings = bookings,
+                            shopId = shopId,
+                            selectedDate = date,
+                            filter = filter
+                        )
+                    }.collect { data ->
+                        currentSchedule = data.schedule
+                        allSlotsForDate = data.slots
+                        currentSlotBookings = data.slotBookings
+                        updateState(UiState.Success(data))
+                    }
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                updateState(UiState.Error(e.localizedMessage ?: "Không thể tải dữ liệu khung giờ", e))
             }
         }
     }
 
     fun setSelectedDate(date: String, shopId: String = "shop_01") {
         _selectedDate.value = date
-        launchWithLoading {
-            slotRepository.getSlots(shopId, date).collect { slots ->
-                allSlotsForDate = slots
-                emitSuccessState()
-            }
+        if (observeJob == null || observeJob?.isActive != true) {
+            loadScheduleAndSlots(shopId)
         }
     }
 
     fun setSlotFilter(filter: SlotFilterType) {
         _slotFilter.value = filter
-        emitSuccessState()
+        if (observeJob == null || observeJob?.isActive != true) {
+            emitSuccessState()
+        }
+    }
+
+    private fun buildScreenData(
+        schedule: WorkSchedule,
+        slots: List<SlotItem>,
+        allBookings: List<Booking>,
+        shopId: String,
+        selectedDate: String,
+        filter: SlotFilterType
+    ): ScheduleScreenData {
+        val synced = slotBookingSynchronizer.synchronize(
+            slots = slots,
+            allBookings = allBookings,
+            shopId = shopId,
+            selectedDate = selectedDate
+        )
+        val filtered = slotFilterPolicy.filter(synced.slots, filter)
+        return ScheduleScreenData(
+            schedule = schedule,
+            slots = synced.slots,
+            filteredSlots = filtered,
+            activeFilter = filter,
+            slotBookings = synced.slotBookings
+        )
     }
 
     private fun emitSuccessState() {
@@ -100,7 +165,8 @@ class MerchantScheduleViewModel(
                     schedule = currentSchedule,
                     slots = allSlotsForDate,
                     filteredSlots = filtered,
-                    activeFilter = _slotFilter.value
+                    activeFilter = _slotFilter.value,
+                    slotBookings = currentSlotBookings
                 )
             )
         )
@@ -163,6 +229,37 @@ class MerchantScheduleViewModel(
     }
 
     /**
+     * Chức năng 5: Chỉnh sửa chi tiết 1 khung giờ (giờ bắt đầu/kết thúc, sức chứa, khóa)
+     */
+    fun updateSlot(
+        editedSlot: SlotItem,
+        onSuccess: (SlotItem) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val validation = slotEditValidator.validate(editedSlot, allSlotsForDate)
+        if (validation is SlotEditValidator.ValidationResult.Invalid) {
+            onError(validation.errorMessage)
+            return
+        }
+
+        val startMin = ScheduleValidator.parseTimeToMinutes(editedSlot.startTime)!!
+        val endMin = ScheduleValidator.parseTimeToMinutes(editedSlot.endTime)!!
+        val normalized = editedSlot.copy(
+            startTime = ScheduleValidator.formatMinutesToTime(startMin),
+            endTime = ScheduleValidator.formatMinutesToTime(endMin)
+        )
+
+        viewModelScope.launch {
+            val result = slotRepository.updateSlot(normalized)
+            if (result.isSuccess) {
+                onSuccess(normalized)
+            } else {
+                onError("Không thể cập nhật khung giờ: ${result.exceptionOrNull()?.localizedMessage}")
+            }
+        }
+    }
+
+    /**
      * Chức năng 5: Khóa hoặc Mở khóa nhận khách một khung giờ cụ thể
      */
     fun toggleSlotBlock(
@@ -196,8 +293,20 @@ class MerchantScheduleViewModel(
                 val newSlots = slotGenerator.generateSlots(schedule = sched, date = date, shopId = shopId)
                 val result = slotRepository.saveGeneratedSlots(newSlots)
                 if (result.isSuccess) {
-                    allSlotsForDate = newSlots
-                    emitSuccessState()
+                    if (observeJob == null || observeJob?.isActive != true) {
+                        val bookings = bookingRepository.getShopBookings(shopId).firstOrNull().orEmpty()
+                        val data = buildScreenData(
+                            schedule = sched,
+                            slots = newSlots,
+                            allBookings = bookings,
+                            shopId = shopId,
+                            selectedDate = date,
+                            filter = _slotFilter.value
+                        )
+                        allSlotsForDate = data.slots
+                        currentSlotBookings = data.slotBookings
+                        updateState(UiState.Success(data))
+                    }
                     onSuccess(newSlots.size)
                 } else {
                     onError("Không thể tạo khung giờ: ${result.exceptionOrNull()?.localizedMessage}")

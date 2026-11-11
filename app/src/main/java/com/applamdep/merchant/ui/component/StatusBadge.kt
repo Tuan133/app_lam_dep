@@ -48,6 +48,9 @@ fun StatusBadge(
         MerchantConstants.SHOP_STATUS_REJECTED -> Triple(
             Color(0xFFFDECEA), Color(0xFFD32F2F), "Bị từ chối"
         )
+        MerchantConstants.SHOP_STATUS_CLOSED -> Triple(
+            Color(0xFFFDECEA), Color(0xFFD32F2F), "Đã đóng cửa"
+        )
         MerchantConstants.PLAN_VIP -> Triple(
             Color(0xFFFFF9E6), MerchantVipGold, "ĐỐI TÁC VIP"
         )

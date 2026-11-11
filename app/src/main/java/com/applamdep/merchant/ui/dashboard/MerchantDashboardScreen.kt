@@ -172,38 +172,14 @@ fun MerchantDashboardScreen(
                             Spacer(modifier = Modifier.width(12.dp))
 
                             Column(modifier = Modifier.weight(1f)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = profile.shopName,
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MerchantTextPrimary,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f, fill = false)
-                                    )
-                                    if (profile.isVip) {
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Box(
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(4.dp))
-                                                .background(MerchantVipBg)
-                                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                                        ) {
-                                            Text(
-                                                text = "VIP",
-                                                color = MerchantVipGold,
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                maxLines = 1,
-                                                softWrap = false
-                                            )
-                                        }
-                                    }
-                                }
+                                Text(
+                                    text = profile.shopName,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MerchantTextPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
 
                                 Spacer(modifier = Modifier.height(3.dp))
 
@@ -295,7 +271,7 @@ fun MerchantDashboardScreen(
                         DashboardMetricCard(
                             title = "Doanh thu hôm nay",
                             value = Formatters.formatCurrency(stats.estimatedRevenueToday),
-                            subtitle = "Cọc & Dịch vụ",
+                            subtitle = "Cọc sàn sau hoàn thành",
                             icon = Icons.Default.AttachMoney,
                             color = MerchantSecondary,
                             modifier = Modifier.weight(1f)
@@ -314,7 +290,7 @@ fun MerchantDashboardScreen(
                         FeatureRow(
                             icon = Icons.Default.EventNote,
                             title = "Quản lý Lịch hẹn & Trạng thái",
-                            description = "Xác nhận, bắt đầu làm, hoàn tất đơn (+30p)",
+                            description = "Từ chối, hủy lịch, duyệt hoàn thành (+30p)",
                             badge = if (stats.pendingBookings > 0) "${stats.pendingBookings} mới" else null,
                             onClick = onNavigateToBookings
                         )
@@ -343,7 +319,7 @@ fun MerchantDashboardScreen(
 
                         FeatureRow(
                             icon = Icons.Default.AccountBalanceWallet,
-                            title = "Tiền cọc Ký quỹ Escrow",
+                            title = "Theo dõi tiền cọc",
                             description = "Theo dõi cọc sàn giữ, giải ngân, hoàn tiền",
                             onClick = onNavigateToFinance
                         )
@@ -489,6 +465,7 @@ private fun DashboardMetricCard(
             Text(
                 text = subtitle,
                 fontSize = 10.sp,
+                lineHeight = 13.sp,
                 color = MerchantTextHint
             )
         }

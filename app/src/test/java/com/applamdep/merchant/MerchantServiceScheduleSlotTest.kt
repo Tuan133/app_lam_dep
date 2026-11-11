@@ -1,16 +1,25 @@
 package com.applamdep.merchant
 
 import com.applamdep.merchant.core.constants.MerchantConstants
+import com.applamdep.merchant.data.repository.BookingRepositoryImpl
+import com.applamdep.merchant.data.repository.ScheduleRepositoryImpl
+import com.applamdep.merchant.data.repository.ServiceRepositoryImpl
+import com.applamdep.merchant.data.repository.SlotRepositoryImpl
 import com.applamdep.merchant.domain.model.Booking
+import com.applamdep.merchant.domain.model.ServiceItem
 import com.applamdep.merchant.domain.model.SlotItem
 import com.applamdep.merchant.domain.model.WorkSchedule
 import com.applamdep.merchant.domain.rule.ScheduleSlotGenerator
 import com.applamdep.merchant.domain.rule.ScheduleValidator
 import com.applamdep.merchant.domain.rule.ServiceRemovalPolicy
 import com.applamdep.merchant.domain.rule.ServiceValidator
+import com.applamdep.merchant.domain.rule.SlotBookingSynchronizer
 import com.applamdep.merchant.domain.rule.SlotCapacityRule
+import com.applamdep.merchant.domain.rule.SlotEditValidator
 import com.applamdep.merchant.domain.rule.SlotFilterPolicy
 import com.applamdep.merchant.domain.rule.SlotFilterType
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -29,6 +38,7 @@ class MerchantServiceScheduleSlotTest {
     private val scheduleValidator = ScheduleValidator()
     private val slotGenerator = ScheduleSlotGenerator()
     private val slotCapacityRule = SlotCapacityRule()
+    private val slotEditValidator = SlotEditValidator(slotCapacityRule)
     private val slotFilterPolicy = SlotFilterPolicy()
 
     // ==========================================
@@ -288,5 +298,171 @@ class MerchantServiceScheduleSlotTest {
         val filtered = slotFilterPolicy.filter(slots, SlotFilterType.BLOCKED)
         assertEquals(1, filtered.size)
         assertEquals("3", filtered[0].id)
+    }
+
+    @Test
+    fun serviceRepository_addAndUpdateServiceImage_persistsImageUrl() = runBlocking {
+        val repo = ServiceRepositoryImpl()
+        val newId = repo.addService(
+            ServiceItem(
+                shopId = "shop_01",
+                name = "Vẽ Móng Mắt Mèo Cực Quang",
+                price = 280000L,
+                durationMinutes = 60,
+                category = "Nail Art",
+                imageUrl = "preset:nail_cateye_aurora"
+            )
+        ).getOrThrow()
+
+        val created = repo.getServices("shop_01").first().first { it.id == newId }
+        assertEquals("preset:nail_cateye_aurora", created.imageUrl)
+
+        val updatedResult = repo.updateService(
+            created.copy(imageUrl = "content://media/external/images/media/1234")
+        )
+        assertTrue(updatedResult.isSuccess)
+
+        val refreshed = repo.getServices("shop_01").first().first { it.id == newId }
+        assertEquals("content://media/external/images/media/1234", refreshed.imageUrl)
+    }
+
+    @Test
+    fun slotEditValidator_validNonOverlappingEdit_returnsValid() {
+        val target = SlotItem(id = "slot_01", startTime = "09:00", endTime = "10:15", capacity = 4, booked = 2)
+        val others = listOf(
+            SlotItem(id = "slot_02", startTime = "10:30", endTime = "11:30", capacity = 3, booked = 1)
+        )
+        val result = slotEditValidator.validate(target, others)
+        assertTrue(result is SlotEditValidator.ValidationResult.Valid)
+    }
+
+    @Test
+    fun slotEditValidator_overlappingOrInvalidTime_returnsInvalid() {
+        val overlapping = SlotItem(id = "slot_01", startTime = "09:30", endTime = "11:00", capacity = 3, booked = 1)
+        val others = listOf(
+            SlotItem(id = "slot_02", startTime = "10:30", endTime = "11:30", capacity = 3, booked = 1)
+        )
+        assertTrue(slotEditValidator.validate(overlapping, others) is SlotEditValidator.ValidationResult.Invalid)
+
+        val inverted = SlotItem(id = "slot_01", startTime = "10:00", endTime = "09:00", capacity = 3, booked = 1)
+        assertTrue(slotEditValidator.validate(inverted, others) is SlotEditValidator.ValidationResult.Invalid)
+    }
+
+    @Test
+    fun slotEditValidator_capacityBelowBooked_returnsInvalid() {
+        val target = SlotItem(id = "slot_01", startTime = "09:00", endTime = "10:00", capacity = 1, booked = 2)
+        val result = slotEditValidator.validate(target, emptyList())
+        assertTrue(result is SlotEditValidator.ValidationResult.Invalid)
+    }
+
+    @Test
+    fun slotRepository_updateSlot_persistsAndSortsChronologically() = runBlocking {
+        val repo = SlotRepositoryImpl()
+        val original = repo.getSlots("shop_01", "2026-10-29").first().first { it.id == "slot_04" }
+        val edited = original.copy(startTime = "12:00", endTime = "13:00", capacity = 5)
+
+        val updateRes = repo.updateSlot(edited)
+        assertTrue(updateRes.isSuccess)
+
+        val allAfter = repo.getSlots("shop_01", "2026-10-29").first()
+        val updatedSlot = allAfter.first { it.id == "slot_04" }
+        assertEquals("12:00", updatedSlot.startTime)
+        assertEquals("13:00", updatedSlot.endTime)
+        assertEquals(5, updatedSlot.capacity)
+        assertEquals(allAfter.sortedBy { it.startTime }.map { it.id }, allAfter.map { it.id })
+    }
+
+    @Test
+    fun defaultCapacity_andSlotCapacity_defaultToOneCustomerPerOneHourSlot() = runBlocking {
+        assertEquals(1, WorkSchedule().defaultCapacity)
+        assertEquals(1, SlotItem().capacity)
+        val schedule = ScheduleRepositoryImpl().getSchedule("shop_01").first()
+        assertEquals(1, schedule.defaultCapacity)
+        assertEquals(60, schedule.slotDurationMinutes)
+    }
+
+    @Test
+    fun slotRepository_isolatesSlotsByDate_withCapacityOneAndZeroBooked() = runBlocking {
+        val repo = SlotRepositoryImpl()
+        val todaySlots = repo.getSlots("shop_01", "2026-10-29").first()
+        val tomorrowSlots = repo.getSlots("shop_01", "2026-10-30").first()
+
+        assertEquals(7, todaySlots.size)
+        assertTrue(todaySlots.all { it.capacity == 1 && it.date == "2026-10-29" })
+        assertEquals(7, tomorrowSlots.size)
+        assertTrue(tomorrowSlots.all { it.capacity == 1 && it.booked == 0 && !it.isBlocked && it.date == "2026-10-30" })
+    }
+
+    @Test
+    fun slotBookingSynchronizer_matchesActualBookingsPerSlotAndDate() = runBlocking {
+        val slotRepo = SlotRepositoryImpl()
+        val bookingRepo = BookingRepositoryImpl()
+        val synchronizer = SlotBookingSynchronizer()
+
+        val todaySlots = slotRepo.getSlots("shop_01", "2026-10-29").first()
+        val allBookings = bookingRepo.getShopBookings("shop_01").first()
+
+        val todaySynced = synchronizer.synchronize(
+            slots = todaySlots,
+            allBookings = allBookings,
+            shopId = "shop_01",
+            selectedDate = "2026-10-29"
+        )
+
+        assertEquals(1, todaySynced.slots.first { it.id == "slot_01" }.booked)
+        assertEquals(listOf("BK-9021"), todaySynced.slotBookings["slot_01"]!!.map { it.id })
+        assertEquals(1, todaySynced.slots.first { it.id == "slot_02" }.booked)
+        assertEquals(listOf("BK-9022"), todaySynced.slotBookings["slot_02"]!!.map { it.id })
+        assertEquals(1, todaySynced.slots.first { it.id == "slot_03" }.booked)
+        assertEquals(listOf("BK-9023"), todaySynced.slotBookings["slot_03"]!!.map { it.id })
+        assertEquals(1, todaySynced.slots.first { it.id == "slot_04" }.booked)
+        // BK-9010 là đơn ngày 2026-10-28 nên không trộn vào slot_04 ngày 2026-10-29
+        assertEquals(listOf("BK-9018"), todaySynced.slotBookings["slot_04"]!!.map { it.id })
+        assertEquals(0, todaySynced.slots.first { it.id == "slot_05" }.booked)
+        assertTrue(todaySynced.slotBookings["slot_05"]!!.isEmpty())
+        assertEquals(1, todaySynced.slots.first { it.id == "slot_06" }.booked)
+        assertEquals(listOf("BK-9024"), todaySynced.slotBookings["slot_06"]!!.map { it.id })
+        assertEquals(0, todaySynced.slots.first { it.id == "slot_07" }.booked)
+        assertTrue(todaySynced.slotBookings["slot_07"]!!.isEmpty())
+
+        val tomorrowSlots = slotRepo.getSlots("shop_01", "2026-10-30").first()
+        val tomorrowSynced = synchronizer.synchronize(
+            slots = tomorrowSlots,
+            allBookings = allBookings,
+            shopId = "shop_01",
+            selectedDate = "2026-10-30"
+        )
+        assertTrue(tomorrowSynced.slots.all { it.booked == 0 })
+        assertTrue(tomorrowSynced.slotBookings.values.all { it.isEmpty() })
+    }
+
+    @Test
+    fun slotBookingSynchronizer_cancellingBooking_freesSlotCapacityWhilePreservingOrderHistory() = runBlocking {
+        val baseTime = 1_760_000_000_000L
+        val slotRepo = SlotRepositoryImpl()
+        val bookingRepo = BookingRepositoryImpl(nowProvider = { baseTime })
+        val synchronizer = SlotBookingSynchronizer()
+
+        val cancelResult = bookingRepo.updateBookingStatus(
+            bookingId = "BK-9022",
+            newStatus = MerchantConstants.BOOKING_STATUS_CANCELLED,
+            reason = "Khách đổi lịch"
+        )
+        assertTrue(cancelResult.isSuccess)
+
+        val todaySlots = slotRepo.getSlots("shop_01", "2026-10-29").first()
+        val allBookings = bookingRepo.getShopBookings("shop_01").first()
+        val synced = synchronizer.synchronize(
+            slots = todaySlots,
+            allBookings = allBookings,
+            shopId = "shop_01",
+            selectedDate = "2026-10-29"
+        )
+
+        val slot02 = synced.slots.first { it.id == "slot_02" }
+        assertEquals(0, slot02.booked)
+        assertEquals(1, synced.slotBookings["slot_02"]!!.size)
+        assertEquals(MerchantConstants.BOOKING_STATUS_CANCELLED, synced.slotBookings["slot_02"]!![0].status)
+        assertEquals("Khách đổi lịch", synced.slotBookings["slot_02"]!![0].cancelReason)
     }
 }

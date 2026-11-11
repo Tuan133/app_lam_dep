@@ -66,7 +66,7 @@ fun MerchantFinanceScreen(
         ) {
             when (val state = uiState) {
                 is UiState.Idle, is UiState.Loading -> {
-                    LoadingStateView(message = "Đang tải dữ liệu ký quỹ...")
+                    LoadingStateView(message = "Đang tải dữ liệu tiền cọc...")
                 }
                 is UiState.Error -> {
                     ErrorStateView(
@@ -226,7 +226,7 @@ fun MerchantFinanceScreen(
                         if (transactions.isEmpty()) {
                             item {
                                 EmptyStateView(
-                                    title = "Chưa có giao dịch ký quỹ nào",
+                                    title = "Chưa có giao dịch tiền cọc nào",
                                     subtitle = "Khi có khách đặt lịch và đặt cọc, các giao dịch sẽ hiển thị tại đây."
                                 )
                             }

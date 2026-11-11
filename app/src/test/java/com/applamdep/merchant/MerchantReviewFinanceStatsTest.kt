@@ -1,10 +1,16 @@
 package com.applamdep.merchant
 
 import com.applamdep.merchant.core.constants.MerchantConstants
+import com.applamdep.merchant.data.repository.BookingRepositoryImpl
+import com.applamdep.merchant.data.repository.ReviewRepositoryImpl
+import com.applamdep.merchant.data.repository.StatsRepositoryImpl
+import com.applamdep.merchant.data.repository.TransactionRepositoryImpl
 import com.applamdep.merchant.domain.model.Transaction
 import com.applamdep.merchant.domain.rule.EscrowStatusCalculator
 import com.applamdep.merchant.domain.rule.ReviewReplyValidator
 import com.applamdep.merchant.domain.rule.ReviewReportValidator
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -85,5 +91,27 @@ class MerchantReviewFinanceStatsTest {
         // Refunded = 50k
         assertEquals(50000L, summary.refundedTotalBalance)
         assertEquals(5, summary.transactions.size)
+    }
+
+    @Test
+    fun statsRepository_revenueComesOnlyFromReleasedEscrowDeposits() = runBlocking {
+        val bookingRepo = BookingRepositoryImpl()
+        val reviewRepo = ReviewRepositoryImpl()
+        val transactionRepo = TransactionRepositoryImpl()
+        val statsRepo = StatsRepositoryImpl(bookingRepo, reviewRepo, transactionRepo)
+
+        // Ban đầu chỉ có tx_03 (BK-9010 = 100.000 đ) đã RELEASED_TO_SHOP; các cọc HELD/REFUNDED chưa cộng vào doanh thu
+        val initialStats = statsRepo.getShopStats("shop_01").first()
+        assertEquals(100000L, initialStats.estimatedRevenueToday)
+
+        // Khi giải ngân cọc của đơn BK-9024 (100.000 đ) sau khi hoàn thành dịch vụ -> doanh thu nhảy +100.000 đ
+        assertTrue(transactionRepo.releaseDeposit("BK-9024", 100000L).isSuccess)
+        val afterCompleteStats = statsRepo.getShopStats("shop_01").first()
+        assertEquals(200000L, afterCompleteStats.estimatedRevenueToday)
+
+        // Khi hoàn cọc đơn hủy BK-9021 -> không cộng vào doanh thu tiệm
+        assertTrue(transactionRepo.refundDeposit("BK-9021", 100000L).isSuccess)
+        val afterRefundStats = statsRepo.getShopStats("shop_01").first()
+        assertEquals(200000L, afterRefundStats.estimatedRevenueToday)
     }
 }

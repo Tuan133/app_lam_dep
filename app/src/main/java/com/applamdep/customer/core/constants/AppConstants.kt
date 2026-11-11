@@ -11,6 +11,7 @@ object AppConstants {
     // Trạng thái cửa hàng
     const val SHOP_STATUS_APPROVED = "APPROVED"
     const val SHOP_STATUS_PENDING = "PENDING"
+    const val SHOP_STATUS_CLOSED = "CLOSED"
 
     // Gói thành viên cửa hàng
     const val PLAN_VIP = "VIP"

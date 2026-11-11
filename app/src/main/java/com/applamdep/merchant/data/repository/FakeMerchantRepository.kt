@@ -103,20 +103,20 @@ class FakeMerchantRepository(
             closeTime = "21:00",
             breakStartTime = "12:30",
             breakEndTime = "13:30",
-            defaultSlotCapacity = 3
+            defaultSlotCapacity = 1
         )
     )
 
     // 4. Khung giờ slots
     private val slotsFlow = MutableStateFlow<List<ShopSlot>>(
         listOf(
-            ShopSlot("slot_01", "shop_lamour", "2026-10-23", "09:00", maxCapacity = 3, bookedCount = 1, isAvailable = true),
-            ShopSlot("slot_02", "shop_lamour", "2026-10-23", "10:30", maxCapacity = 3, bookedCount = 2, isAvailable = true),
-            ShopSlot("slot_03", "shop_lamour", "2026-10-23", "13:30", maxCapacity = 3, bookedCount = 0, isAvailable = true),
-            ShopSlot("slot_04", "shop_lamour", "2026-10-23", "15:00", maxCapacity = 3, bookedCount = 3, isAvailable = false),
-            ShopSlot("slot_05", "shop_lamour", "2026-10-23", "16:30", maxCapacity = 3, bookedCount = 1, isAvailable = true),
-            ShopSlot("slot_06", "shop_lamour", "2026-10-23", "18:00", maxCapacity = 3, bookedCount = 2, isAvailable = true),
-            ShopSlot("slot_07", "shop_lamour", "2026-10-23", "19:30", maxCapacity = 3, bookedCount = 1, isAvailable = true)
+            ShopSlot("slot_01", "shop_lamour", "2026-10-23", "09:00", maxCapacity = 1, bookedCount = 1, isAvailable = false),
+            ShopSlot("slot_02", "shop_lamour", "2026-10-23", "10:30", maxCapacity = 1, bookedCount = 1, isAvailable = false),
+            ShopSlot("slot_03", "shop_lamour", "2026-10-23", "13:30", maxCapacity = 1, bookedCount = 0, isAvailable = true),
+            ShopSlot("slot_04", "shop_lamour", "2026-10-23", "15:00", maxCapacity = 1, bookedCount = 1, isAvailable = false),
+            ShopSlot("slot_05", "shop_lamour", "2026-10-23", "16:30", maxCapacity = 1, bookedCount = 0, isAvailable = true),
+            ShopSlot("slot_06", "shop_lamour", "2026-10-23", "18:00", maxCapacity = 1, bookedCount = 1, isAvailable = false),
+            ShopSlot("slot_07", "shop_lamour", "2026-10-23", "19:30", maxCapacity = 1, bookedCount = 0, isAvailable = true)
         )
     )
 

@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -32,12 +33,16 @@ import com.applamdep.merchant.core.di.MerchantViewModelFactory
 import com.applamdep.merchant.core.util.Formatters
 import com.applamdep.merchant.domain.model.Booking
 import com.applamdep.merchant.domain.rule.BookingFilterType
+import com.applamdep.merchant.domain.rule.MerchantAutoApprovalPolicy
+import com.applamdep.merchant.domain.rule.MerchantAutoCompletionPolicy
+import com.applamdep.merchant.domain.rule.MerchantCancellationPolicy
 import com.applamdep.merchant.ui.component.EmptyStateView
 import com.applamdep.merchant.ui.component.ErrorStateView
 import com.applamdep.merchant.ui.component.LoadingStateView
 import com.applamdep.merchant.ui.component.MerchantTopBar
 import com.applamdep.merchant.ui.component.StatusBadge
 import com.applamdep.merchant.ui.theme.*
+import kotlinx.coroutines.delay
 
 /**
  * 1. TÍNH CHẤT OOP: ĐÓNG GÓI & TRỪU TƯỢNG
@@ -57,12 +62,50 @@ fun MerchantBookingListScreen(
     val uiState by viewModel.uiState.collectAsState()
     val currentFilter by viewModel.currentFilter.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val completedDepositRevenue by viewModel.completedDepositRevenue.collectAsState()
 
     var bookingToCancel by remember { mutableStateOf<Booking?>(null) }
     var cancelReasonInput by remember { mutableStateOf("") }
+    var cancelReasonError by remember { mutableStateOf(false) }
+    var currentTimeMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    val autoApprovalPolicy = remember { MerchantAutoApprovalPolicy() }
+    val autoCompletionPolicy = remember { MerchantAutoCompletionPolicy() }
+    val cancellationPolicy = remember { MerchantCancellationPolicy() }
 
     LaunchedEffect(shopId) {
         viewModel.loadBookings(shopId)
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            currentTimeMillis = System.currentTimeMillis()
+            delay(1000L)
+        }
+    }
+
+    LaunchedEffect(currentTimeMillis, bookingToCancel) {
+        val activeBooking = bookingToCancel
+        if (activeBooking != null &&
+            activeBooking.status == MerchantConstants.BOOKING_STATUS_CONFIRMED &&
+            !cancellationPolicy.canCancel(activeBooking, currentTimeMillis)
+        ) {
+            bookingToCancel = null
+            cancelReasonError = false
+            Toast.makeText(
+                context,
+                "Đã trong vòng 30 phút trước giờ hẹn, nút Hủy lịch đã bị khóa.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    LaunchedEffect(currentTimeMillis, uiState) {
+        val currentList = (uiState as? UiState.Success)?.data.orEmpty()
+        val hasExpiredPending = currentList.any { autoApprovalPolicy.shouldAutoApprove(it, currentTimeMillis) }
+        val hasExpiredCompletion = currentList.any { autoCompletionPolicy.shouldAutoComplete(it, currentTimeMillis) }
+        if (hasExpiredPending || hasExpiredCompletion) {
+            viewModel.triggerAutoPolicies(shopId) { _, _ -> }
+        }
     }
 
     Scaffold(
@@ -75,26 +118,43 @@ fun MerchantBookingListScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            viewModel.triggerAutoComplete(shopId) { count ->
-                                if (count > 0) {
-                                    Toast.makeText(
-                                        context,
-                                        "Đã tự động chuyển $count lịch hẹn quá 30p sang HOÀN THÀNH!",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                } else {
-                                    Toast.makeText(
-                                        context,
-                                        "Không có lịch hẹn nào quá hạn 30p chưa hoàn tất.",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                            viewModel.triggerAutoPolicies(shopId) { approvedCount, completedCount ->
+                                when {
+                                    approvedCount > 0 && completedCount > 0 -> {
+                                        Toast.makeText(
+                                            context,
+                                            "Đã tự động duyệt $approvedCount đơn quá 30p và hoàn tất $completedCount lịch hẹn!",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                    approvedCount > 0 -> {
+                                        Toast.makeText(
+                                            context,
+                                            "Đã tự động duyệt $approvedCount đơn hàng quá 30p chờ duyệt!",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                    completedCount > 0 -> {
+                                        Toast.makeText(
+                                            context,
+                                            "Đã tự động chuyển $completedCount lịch hẹn quá 30p sang HOÀN THÀNH!",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                    else -> {
+                                        Toast.makeText(
+                                            context,
+                                            "Không có đơn nào đến hạn tự động duyệt hoặc hoàn tất.",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                 }
                             }
                         }
                     ) {
                         Icon(
                             imageVector = Icons.Default.Autorenew,
-                            contentDescription = "Quét tự động hoàn thành",
+                            contentDescription = "Kiểm tra tự động duyệt và hoàn thành",
                             tint = MerchantPrimary
                         )
                     }
@@ -183,13 +243,46 @@ fun MerchantBookingListScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = stringResource(R.string.merchant_booking_auto_complete_note),
+                        text = stringResource(R.string.merchant_booking_auto_policy_note),
                         fontSize = 11.sp,
                         color = MerchantPrimaryDark,
                         lineHeight = 15.sp
                     )
                 }
             }
+
+            // Thanh hiển thị doanh thu cọc đã cộng dồn từ các đơn Hoàn thành
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MerchantSurface)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.AccountBalanceWallet,
+                        contentDescription = null,
+                        tint = MerchantPrimary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Doanh thu cọc đã nhận:",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MerchantTextSecondary
+                    )
+                }
+                Text(
+                    text = Formatters.formatCurrency(completedDepositRevenue),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MerchantPrimary
+                )
+            }
+            HorizontalDivider(thickness = 0.5.dp, color = MerchantDivider)
 
             when (val state = uiState) {
                 is UiState.Idle, is UiState.Loading -> {
@@ -203,6 +296,49 @@ fun MerchantBookingListScreen(
                 }
                 is UiState.Success -> {
                     val bookings = state.data
+                    val dueForAutoApproveIds = remember(bookings, currentTimeMillis) {
+                        bookings.filter { autoApprovalPolicy.shouldAutoApprove(it, currentTimeMillis) }
+                            .map { it.id }
+                    }
+                    LaunchedEffect(dueForAutoApproveIds) {
+                        if (dueForAutoApproveIds.isNotEmpty()) {
+                            if (bookingToCancel != null && bookingToCancel!!.id in dueForAutoApproveIds) {
+                                bookingToCancel = null
+                            }
+                            viewModel.triggerAutoApprove(shopId) { approvedCount ->
+                                if (approvedCount > 0) {
+                                    Toast.makeText(
+                                        context,
+                                        "Đã tự động duyệt $approvedCount đơn hàng sau 30 phút chờ duyệt.",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        }
+                    }
+
+                    val dueForAutoCompleteIds = remember(bookings, currentTimeMillis) {
+                        bookings.filter { autoCompletionPolicy.shouldAutoComplete(it, currentTimeMillis) }
+                            .map { it.id }
+                    }
+                    LaunchedEffect(dueForAutoCompleteIds) {
+                        if (dueForAutoCompleteIds.isNotEmpty()) {
+                            if (bookingToCancel != null && bookingToCancel!!.id in dueForAutoCompleteIds) {
+                                bookingToCancel = null
+                                cancelReasonError = false
+                            }
+                            viewModel.triggerAutoComplete(shopId) { completedCount ->
+                                if (completedCount > 0) {
+                                    Toast.makeText(
+                                        context,
+                                        "Đã tự động duyệt hoàn thành $completedCount đơn sau 30 phút và cộng cọc vào doanh thu shop.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }
+                        }
+                    }
+
                     if (bookings.isEmpty()) {
                         EmptyStateView(
                             title = "Không có lịch hẹn nào",
@@ -221,6 +357,10 @@ fun MerchantBookingListScreen(
                             items(bookings, key = { it.id }) { booking ->
                                 BookingItemCard(
                                     booking = booking,
+                                    currentTimeMillis = currentTimeMillis,
+                                    autoApprovalPolicy = autoApprovalPolicy,
+                                    autoCompletionPolicy = autoCompletionPolicy,
+                                    cancellationPolicy = cancellationPolicy,
                                     onConfirm = {
                                         viewModel.updateStatus(
                                             bookingId = booking.id,
@@ -251,6 +391,7 @@ fun MerchantBookingListScreen(
                                     onRequestCancel = {
                                         bookingToCancel = booking
                                         cancelReasonInput = ""
+                                        cancelReasonError = false
                                     }
                                 )
                             }
@@ -261,56 +402,153 @@ fun MerchantBookingListScreen(
             }
         }
 
-        // Hộp thoại xác nhận Hủy / Từ chối đơn đặt hẹn kèm nhập lý do
+        // Hộp thoại xác nhận Từ chối (PENDING) / Hủy (CONFIRMED) đơn đặt hẹn
         bookingToCancel?.let { bk ->
+            val isPendingReject = bk.status == MerchantConstants.BOOKING_STATUS_PENDING
             AlertDialog(
-                onDismissRequest = { bookingToCancel = null },
+                onDismissRequest = {
+                    bookingToCancel = null
+                    cancelReasonError = false
+                },
                 title = {
                     Text(
-                        text = if (bk.status == MerchantConstants.BOOKING_STATUS_PENDING) "Từ chối lịch hẹn" else "Hủy lịch hẹn",
+                        text = if (isPendingReject) "Xác nhận từ chối đơn hàng" else "Hủy lịch hẹn",
                         fontWeight = FontWeight.Bold,
                         color = MerchantTextPrimary
                     )
                 },
                 text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Column(
+                        modifier = Modifier.verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
                         Text(
-                            text = "Bạn có chắc chắn muốn hủy đơn hẹn #${bk.id} của khách ${bk.customerName} không?",
+                            text = if (isPendingReject) {
+                                "Bạn có chắc chắn muốn từ chối đơn hàng #${bk.id} của khách ${bk.customerName} hay không?"
+                            } else {
+                                "Bạn có chắc chắn muốn hủy đơn hẹn #${bk.id} của khách ${bk.customerName} không?"
+                            },
                             fontSize = 14.sp,
                             color = MerchantTextPrimary
                         )
+                        if (bk.depositAmount > 0L) {
+                            Text(
+                                text = "Tiền cọc ${Formatters.formatCurrency(bk.depositAmount)} sẽ được hoàn lại cho khách hàng.",
+                                fontSize = 12.sp,
+                                color = MerchantTextSecondary
+                            )
+                        }
                         OutlinedTextField(
                             value = cancelReasonInput,
-                            onValueChange = { cancelReasonInput = it },
-                            label = { Text("Lý do hủy (gửi tới khách hàng)") },
-                            placeholder = { Text("Ví dụ: Quán kín chỗ đột xuất, bảo trì thiết bị...") },
+                            onValueChange = {
+                                cancelReasonInput = it
+                                if (it.isNotBlank()) cancelReasonError = false
+                            },
+                            isError = !isPendingReject && cancelReasonError,
+                            label = {
+                                Text(
+                                    if (isPendingReject) "Lý do từ chối (tùy chọn)"
+                                    else "Lý do hủy (gửi tới khách hàng)"
+                                )
+                            },
+                            placeholder = { Text("Nhập lý do hoặc chọn nhanh gợi ý bên dưới...") },
                             modifier = Modifier.fillMaxWidth()
                         )
+                        if (!isPendingReject && cancelReasonError) {
+                            Text(
+                                text = "Vui lòng nhập lý do hoặc chạm vào một lý do đề xuất bên dưới.",
+                                fontSize = 11.5.sp,
+                                color = MerchantError
+                            )
+                        }
+                        if (!isPendingReject) {
+                            Text(
+                                text = "Lý do đề xuất (chạm để điền nhanh):",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MerchantTextSecondary
+                            )
+                            @OptIn(ExperimentalLayoutApi::class)
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                MerchantConstants.SUGGESTED_CANCEL_REASONS.forEach { suggestion ->
+                                    val isPicked = cancelReasonInput == suggestion
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .background(
+                                                if (isPicked) MerchantPrimary.copy(alpha = 0.12f) else MerchantBackground
+                                            )
+                                            .border(
+                                                width = 1.dp,
+                                                color = if (isPicked) MerchantPrimary else MerchantBorder,
+                                                shape = RoundedCornerShape(16.dp)
+                                            )
+                                            .clickable {
+                                                cancelReasonInput = suggestion
+                                                cancelReasonError = false
+                                            }
+                                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = suggestion,
+                                            fontSize = 11.5.sp,
+                                            fontWeight = if (isPicked) FontWeight.SemiBold else FontWeight.Normal,
+                                            color = if (isPicked) MerchantPrimary else MerchantTextPrimary
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 },
                 confirmButton = {
                     Button(
                         onClick = {
+                            if (!isPendingReject && cancelReasonInput.isBlank()) {
+                                cancelReasonError = true
+                                return@Button
+                            }
+                            val finalReason = cancelReasonInput.ifBlank { "Cửa hàng từ chối lịch hẹn" }
                             viewModel.updateStatus(
                                 bookingId = bk.id,
                                 newStatus = MerchantConstants.BOOKING_STATUS_CANCELLED,
                                 currentStatus = bk.status,
-                                reason = cancelReasonInput.ifBlank { "Cửa hàng bận việc đột xuất" },
-                                onSuccess = {
-                                    Toast.makeText(context, "Đã hủy đơn hẹn.", Toast.LENGTH_SHORT).show()
+                                reason = finalReason,
+                                onSuccess = { msg ->
+                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                                     bookingToCancel = null
+                                    cancelReasonError = false
                                 },
-                                onError = { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+                                onError = { err ->
+                                    Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                                    bookingToCancel = null
+                                    cancelReasonError = false
+                                }
                             )
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MerchantError)
                     ) {
-                        Text(text = "Xác nhận hủy", fontWeight = FontWeight.Bold)
+                        Text(
+                            text = if (isPendingReject) "Xác nhận từ chối" else "Xác nhận hủy",
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { bookingToCancel = null }) {
-                        Text(text = "Quay lại", color = MerchantTextSecondary)
+                    TextButton(
+                        onClick = {
+                            bookingToCancel = null
+                            cancelReasonError = false
+                        }
+                    ) {
+                        Text(
+                            text = if (isPendingReject) "Không" else "Quay lại",
+                            color = MerchantTextSecondary
+                        )
                     }
                 }
             )
@@ -321,6 +559,10 @@ fun MerchantBookingListScreen(
 @Composable
 private fun BookingItemCard(
     booking: Booking,
+    currentTimeMillis: Long = System.currentTimeMillis(),
+    autoApprovalPolicy: MerchantAutoApprovalPolicy = MerchantAutoApprovalPolicy(),
+    autoCompletionPolicy: MerchantAutoCompletionPolicy = MerchantAutoCompletionPolicy(),
+    cancellationPolicy: MerchantCancellationPolicy = MerchantCancellationPolicy(),
     onConfirm: () -> Unit,
     onStartService: () -> Unit,
     onComplete: () -> Unit,
@@ -333,7 +575,7 @@ private fun BookingItemCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            // Header: Mã đơn + Huy hiệu trạng thái + Tag tự động hoàn tất
+            // Header: Mã đơn + Huy hiệu trạng thái + Tag tự động duyệt / tự động hoàn tất
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -346,6 +588,22 @@ private fun BookingItemCard(
                         fontWeight = FontWeight.Bold,
                         color = MerchantTextPrimary
                     )
+                    if (booking.autoApproved) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFFE8F4FD))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "⚡ Tự động duyệt",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1976D2)
+                            )
+                        }
+                    }
                     if (booking.autoCompleted) {
                         Spacer(modifier = Modifier.width(6.dp))
                         Box(
@@ -419,13 +677,26 @@ private fun BookingItemCard(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Thời gian & Cọc ký quỹ
+            // Thời gian hẹn dịch vụ & Cọc ký quỹ
+            val appointmentTimeText = when {
+                booking.startAt > 0L && booking.endAt > booking.startAt ->
+                    "${Formatters.formatTime(booking.startAt)} - ${Formatters.formatTime(booking.endAt)} · ${Formatters.formatDate(booking.startAt)}"
+                booking.startAt > 0L ->
+                    Formatters.formatDateTime(booking.startAt)
+                booking.slotId.isNotBlank() ->
+                    "Slot: ${booking.slotId}"
+                else -> "Hôm nay"
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Icon(
                         imageVector = Icons.Default.AccessTime,
                         contentDescription = null,
@@ -434,18 +705,72 @@ private fun BookingItemCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = if (booking.slotId.isNotBlank()) "Slot: ${booking.slotId}" else "Hôm nay",
+                        text = appointmentTimeText,
                         fontSize = 12.sp,
-                        color = MerchantTextSecondary
+                        color = MerchantTextSecondary,
+                        fontWeight = FontWeight.Medium
                     )
                 }
 
                 if (booking.depositAmount > 0L) {
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Tiền cọc: ${Formatters.formatCurrency(booking.depositAmount)}",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = MerchantPrimary
+                    )
+                }
+            }
+
+            // Thời gian khách đặt đơn
+            if (booking.createdAt > 0L) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.CalendarToday,
+                        contentDescription = null,
+                        tint = MerchantTextSecondary,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = "Đặt lúc: ${Formatters.formatDateTime(booking.createdAt)}",
+                        fontSize = 12.sp,
+                        color = MerchantTextSecondary
+                    )
+                }
+            }
+
+            // Thời hạn 30 phút để từ chối khi đơn ở trạng thái Chờ duyệt
+            if (booking.status == MerchantConstants.BOOKING_STATUS_PENDING && booking.createdAt > 0L) {
+                val remainingMillis = autoApprovalPolicy.remainingRejectMillis(booking, currentTimeMillis)
+                val deadlineTime = Formatters.formatTime(autoApprovalPolicy.autoApproveDeadline(booking))
+                val isUrgent = remainingMillis in 1L..(5 * 60 * 1000L)
+                val stripBg = if (isUrgent) Color(0xFFFDECEA) else Color(0xFFFFF4E5)
+                val stripText = if (isUrgent) Color(0xFFD32F2F) else Color(0xFFB76E00)
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(stripBg)
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Timer,
+                        contentDescription = null,
+                        tint = stripText,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Còn ${Formatters.formatCountdown(remainingMillis)} để từ chối · Tự động duyệt lúc $deadlineTime",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = stripText
                     )
                 }
             }
@@ -468,7 +793,7 @@ private fun BookingItemCard(
                 }
             }
 
-            // Lý do hủy (nếu có)
+            // Lý do hủy / từ chối (nếu có)
             if (booking.status == MerchantConstants.BOOKING_STATUS_CANCELLED && !booking.cancelReason.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Box(
@@ -479,7 +804,7 @@ private fun BookingItemCard(
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = "Lý do hủy: ${booking.cancelReason}",
+                        text = "Lý do: ${booking.cancelReason}",
                         fontSize = 12.sp,
                         color = MerchantError
                     )
@@ -501,7 +826,11 @@ private fun BookingItemCard(
                             border = androidx.compose.foundation.BorderStroke(1.dp, MerchantError.copy(alpha = 0.5f)),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text(text = stringResource(R.string.merchant_btn_cancel), fontSize = 12.sp)
+                            Text(
+                                text = stringResource(R.string.merchant_btn_reject),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
 
                         Button(
@@ -515,58 +844,180 @@ private fun BookingItemCard(
                     }
                 }
                 MerchantConstants.BOOKING_STATUS_CONFIRMED -> {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    val canCancel = cancellationPolicy.canCancel(booking, currentTimeMillis)
+                    val canComplete = autoCompletionPolicy.canComplete(booking, currentTimeMillis)
+                    val lockTimeText = if (booking.startAt > 0L) {
+                        Formatters.formatTime(cancellationPolicy.cancelDeadline(booking))
+                    } else ""
+                    val completeTimeText = if (booking.endAt > 0L) {
+                        Formatters.formatTime(booking.endAt)
+                    } else ""
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    if (booking.endAt > 0L || booking.startAt > 0L) {
+                        val stripSpec = when {
+                            canComplete && booking.endAt > 0L -> {
+                                val remAutoComplete = autoCompletionPolicy.remainingBeforeAutoCompleteMillis(booking, currentTimeMillis)
+                                StatusBannerSpec(
+                                    bg = Color(0xFFFDECEA),
+                                    color = Color(0xFFD32F2F),
+                                    icon = Icons.Default.Timer,
+                                    text = "Đã đến giờ hoàn thành ($completeTimeText) · Sàn tự động duyệt sau ${Formatters.formatCountdown(remAutoComplete)}"
+                                )
+                            }
+                            !canCancel && booking.startAt > 0L -> {
+                                val completeNote = if (completeTimeText.isNotEmpty()) " · Mở Hoàn thành lúc $completeTimeText" else ""
+                                StatusBannerSpec(
+                                    bg = Color(0xFFF3F4F6),
+                                    color = Color(0xFF6B7280),
+                                    icon = Icons.Default.Lock,
+                                    text = "Khóa hủy lịch (dưới 30p trước giờ hẹn)$completeNote"
+                                )
+                            }
+                            else -> {
+                                val completeNote = if (completeTimeText.isNotEmpty()) " · Mở Hoàn thành lúc $completeTimeText" else ""
+                                StatusBannerSpec(
+                                    bg = Color(0xFFE8F4FD),
+                                    color = Color(0xFF1976D2),
+                                    icon = Icons.Default.Info,
+                                    text = "Hủy lịch trước $lockTimeText$completeNote"
+                                )
+                            }
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(stripSpec.bg)
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = stripSpec.icon,
+                                contentDescription = null,
+                                tint = stripSpec.color,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = stripSpec.text,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = stripSpec.color
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         OutlinedButton(
                             onClick = onRequestCancel,
+                            enabled = canCancel,
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MerchantError),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, MerchantError.copy(alpha = 0.5f)),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MerchantError,
+                                disabledContainerColor = Color(0xFFF3F4F6),
+                                disabledContentColor = Color(0xFF9CA3AF)
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (canCancel) MerchantError.copy(alpha = 0.5f) else Color(0xFFD1D5DB)
+                            ),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text(text = "Hủy lịch", fontSize = 12.sp)
+                            Text(
+                                text = "Hủy lịch",
+                                fontSize = 12.sp,
+                                fontWeight = if (canCancel) FontWeight.SemiBold else FontWeight.Normal
+                            )
                         }
 
                         Button(
-                            onClick = onStartService,
+                            onClick = onComplete,
+                            enabled = canComplete,
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MerchantPrimary),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFD32F2F),
+                                contentColor = Color.White,
+                                disabledContainerColor = Color(0xFFE5E7EB),
+                                disabledContentColor = Color(0xFF9CA3AF)
+                            ),
                             modifier = Modifier.weight(1.3f)
                         ) {
-                            Text(text = stringResource(R.string.merchant_btn_in_service), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = stringResource(R.string.merchant_btn_complete_short),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
                 MerchantConstants.BOOKING_STATUS_IN_SERVICE -> {
+                    val canComplete = autoCompletionPolicy.canComplete(booking, currentTimeMillis)
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(
                         onClick = onComplete,
+                        enabled = canComplete,
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MerchantSecondary),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFD32F2F),
+                            contentColor = Color.White,
+                            disabledContainerColor = Color(0xFFE5E7EB),
+                            disabledContentColor = Color(0xFF9CA3AF)
+                        ),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = stringResource(R.string.merchant_btn_complete), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(text = stringResource(R.string.merchant_btn_complete_short), fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 MerchantConstants.BOOKING_STATUS_COMPLETED -> {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.Verified, contentDescription = null, tint = MerchantSecondary, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Dịch vụ đã hoàn tất · Tiền cọc đã giải ngân về ví tiệm",
-                            fontSize = 12.sp,
-                            color = MerchantSecondary,
-                            fontWeight = FontWeight.Medium
-                        )
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Verified, contentDescription = null, tint = MerchantSecondary, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (booking.depositAmount > 0L) {
+                                    "Dịch vụ đã hoàn tất · +${Formatters.formatCurrency(booking.depositAmount)} tiền cọc vào doanh thu shop"
+                                } else {
+                                    "Dịch vụ đã hoàn tất"
+                                },
+                                fontSize = 12.sp,
+                                color = MerchantSecondary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = null,
+                                tint = MerchantGoldDark,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (booking.isReviewed) {
+                                    "Khách hàng đã gửi đánh giá dịch vụ"
+                                } else {
+                                    "Khách hàng đã có thể đánh giá dịch vụ này"
+                                },
+                                fontSize = 11.5.sp,
+                                color = MerchantTextSecondary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
                 else -> Unit
@@ -574,3 +1025,10 @@ private fun BookingItemCard(
         }
     }
 }
+
+private data class StatusBannerSpec(
+    val bg: Color,
+    val color: Color,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val text: String
+)

@@ -127,8 +127,11 @@
     <string name="merchant_btn_confirm">Xác nhận lịch hẹn</string>
     <string name="merchant_btn_in_service">Bắt đầu phục vụ</string>
     <string name="merchant_btn_complete">Hoàn thành dịch vụ</string>
+    <string name="merchant_btn_complete_short">Hoàn thành</string>
+    <string name="merchant_btn_reject">Từ chối</string>
     <string name="merchant_btn_cancel">Từ chối / Hủy lịch</string>
     <string name="merchant_booking_auto_complete_note">Hệ thống sẽ tự động hoàn tất sau 30 phút kể từ lúc kết thúc dịch vụ nếu shop quên thao tác.</string>
+    <string name="merchant_booking_auto_policy_note">Từ chối trong 30p (sau 30p tự duyệt) · Khóa hủy 30p trước giờ hẹn · Mở Hoàn thành khi hết giờ, sàn tự duyệt sau 30p và cộng cọc vào doanh thu.</string>
 
     <!-- 8. Phản hồi đánh giá -->
     <string name="merchant_review_title">Khách hàng đánh giá</string>
@@ -138,12 +141,12 @@
     <string name="merchant_review_request_remove">Yêu cầu gỡ đánh giá</string>
     <string name="merchant_review_report_reason_hint">Lý do khiếu nại gửi Ban quản trị</string>
 
-    <!-- 9. Theo dõi đặt cọc & Ví Escrow -->
-    <string name="merchant_deposit_title">Theo dõi tiền cọc (Ký quỹ Sàn)</string>
+    <!-- 9. Theo dõi tiền cọc -->
+    <string name="merchant_deposit_title">Theo dõi tiền cọc</string>
     <string name="merchant_deposit_held">Cọc sàn đang giữ</string>
     <string name="merchant_deposit_released">Cọc đã giải ngân cho tiệm</string>
     <string name="merchant_deposit_refunded">Cọc đã hoàn trả cho khách</string>
-    <string name="merchant_deposit_note">Lưu ý: Tiền cọc được ký quỹ an toàn trên sàn và tự động giải ngân khi đến giờ hẹn hoặc khi dịch vụ hoàn tất.</string>
+    <string name="merchant_deposit_note">Lưu ý: Tiền cọc được sàn giữ an toàn và tự động giải ngân cộng vào doanh thu của tiệm khi dịch vụ hoàn tất.</string>
 
     <!-- 10. Thống kê cơ bản -->
     <string name="merchant_stats_title">Thống kê hoạt động kinh doanh</string>

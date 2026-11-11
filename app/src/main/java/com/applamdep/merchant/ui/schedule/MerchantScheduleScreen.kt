@@ -31,9 +31,14 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.app_lam_dep.R
 import com.applamdep.merchant.core.base.UiState
+import com.applamdep.merchant.core.constants.MerchantConstants
 import com.applamdep.merchant.core.di.MerchantViewModelFactory
+import com.applamdep.merchant.core.util.Formatters
+import com.applamdep.merchant.domain.model.Booking
 import com.applamdep.merchant.domain.model.SlotItem
 import com.applamdep.merchant.domain.model.WorkSchedule
+import com.applamdep.merchant.domain.rule.ScheduleValidator
+import com.applamdep.merchant.domain.rule.SlotEditValidator
 import com.applamdep.merchant.domain.rule.SlotFilterType
 import com.applamdep.merchant.ui.component.EmptyStateView
 import com.applamdep.merchant.ui.component.ErrorStateView
@@ -135,6 +140,7 @@ fun MerchantScheduleScreen(
                         SlotManagementTab(
                             slots = data.filteredSlots,
                             allSlots = data.slots,
+                            slotBookings = data.slotBookings,
                             selectedDate = selectedDate,
                             activeFilter = activeFilter,
                             onSelectDate = { viewModel.setSelectedDate(it, shopId) },
@@ -162,12 +168,15 @@ fun MerchantScheduleScreen(
                                     onError = { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
                                 )
                             },
-                            onGenerateSlots = {
-                                viewModel.generateSlotsFromSchedule(
-                                    shopId = shopId,
-                                    date = selectedDate,
-                                    onSuccess = { count ->
-                                        Toast.makeText(context, "Đã sinh thành công $count khung giờ cho ngày $selectedDate", Toast.LENGTH_SHORT).show()
+                            onUpdateSlot = { updatedSlot ->
+                                viewModel.updateSlot(
+                                    editedSlot = updatedSlot,
+                                    onSuccess = { saved ->
+                                        Toast.makeText(
+                                            context,
+                                            "Đã cập nhật khung giờ ${saved.startTime} - ${saved.endTime}",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     },
                                     onError = { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
                                 )
@@ -202,14 +211,19 @@ fun MerchantScheduleScreen(
 private fun SlotManagementTab(
     slots: List<SlotItem>,
     allSlots: List<SlotItem>,
+    slotBookings: Map<String, List<Booking>>,
     selectedDate: String,
     activeFilter: SlotFilterType,
     onSelectDate: (String) -> Unit,
     onSelectFilter: (SlotFilterType) -> Unit,
     onUpdateCapacity: (SlotItem, Int) -> Unit,
     onToggleBlock: (SlotItem) -> Unit,
-    onGenerateSlots: () -> Unit
+    onUpdateSlot: (SlotItem) -> Unit
 ) {
+    var showSlotPicker by remember { mutableStateOf(false) }
+    var slotToEdit by remember { mutableStateOf<SlotItem?>(null) }
+    var selectedSlotForOrders by remember { mutableStateOf<SlotItem?>(null) }
+
     val dateOptions = listOf(
         "2026-10-29" to "Hôm nay (29/10)",
         "2026-10-30" to "Ngày mai (30/10)",
@@ -311,19 +325,19 @@ private fun SlotManagementTab(
             )
 
             TextButton(
-                onClick = onGenerateSlots,
+                onClick = { showSlotPicker = true },
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
             ) {
-                Icon(Icons.Default.Autorenew, contentDescription = null, modifier = Modifier.size(16.dp), tint = MerchantPrimary)
+                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp), tint = MerchantPrimary)
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(text = "Tạo lại theo ca", fontSize = 12.sp, color = MerchantPrimary, fontWeight = FontWeight.Bold)
+                Text(text = "Sửa khung giờ", fontSize = 12.sp, color = MerchantPrimary, fontWeight = FontWeight.Bold)
             }
         }
 
         if (slots.isEmpty()) {
             EmptyStateView(
                 title = "Không có khung giờ nào",
-                subtitle = "Bấm 'Tạo lại theo ca' ở trên để tự động phân bổ khung giờ từ ca làm việc."
+                subtitle = "Chưa có khung giờ nào phù hợp trong bộ lọc hiện tại."
             )
         } else {
             LazyColumn(
@@ -333,8 +347,11 @@ private fun SlotManagementTab(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(slots, key = { it.id }) { slot ->
+                    val slotOrders = slotBookings[slot.id].orEmpty()
                     SlotItemCard(
                         slot = slot,
+                        orderCount = slotOrders.size,
+                        onClick = { selectedSlotForOrders = slot },
                         onUpdateCapacity = { newCap -> onUpdateCapacity(slot, newCap) },
                         onToggleBlock = { onToggleBlock(slot) }
                     )
@@ -345,16 +362,55 @@ private fun SlotManagementTab(
             }
         }
     }
+
+    if (showSlotPicker) {
+        SlotPickerDialog(
+            slots = allSlots,
+            onSelectSlot = { chosen ->
+                showSlotPicker = false
+                slotToEdit = chosen
+            },
+            onDismiss = { showSlotPicker = false }
+        )
+    }
+
+    slotToEdit?.let { editing ->
+        SlotEditDialog(
+            initialSlot = editing,
+            otherSlots = allSlots.filter { it.id != editing.id },
+            onBackToPicker = {
+                slotToEdit = null
+                showSlotPicker = true
+            },
+            onDismiss = { slotToEdit = null },
+            onSave = { updated ->
+                onUpdateSlot(updated)
+                slotToEdit = null
+            }
+        )
+    }
+
+    selectedSlotForOrders?.let { selected ->
+        val latestSlot = allSlots.find { it.id == selected.id } ?: selected
+        SlotOrdersDialog(
+            slot = latestSlot,
+            orders = slotBookings[latestSlot.id].orEmpty(),
+            onDismiss = { selectedSlotForOrders = null }
+        )
+    }
 }
 
 @Composable
 private fun SlotItemCard(
     slot: SlotItem,
+    orderCount: Int,
+    onClick: () -> Unit,
     onUpdateCapacity: (Int) -> Unit,
     onToggleBlock: () -> Unit
 ) {
     val context = LocalContext.current
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
@@ -369,7 +425,10 @@ private fun SlotItemCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Khung giờ hiển thị
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Box(
                         modifier = Modifier
                             .size(38.dp)
@@ -413,6 +472,17 @@ private fun SlotItemCard(
                                 else -> MerchantPrimary
                             },
                             fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = if (orderCount > 0) {
+                                "$orderCount đơn hàng · Chạm để xem chi tiết"
+                            } else {
+                                "Chưa có đơn hàng · Chạm để xem"
+                            },
+                            fontSize = 11.sp,
+                            color = if (orderCount > 0 && !slot.isBlocked) MerchantSecondary else MerchantTextHint,
+                            fontWeight = if (orderCount > 0) FontWeight.SemiBold else FontWeight.Normal
                         )
                     }
                 }
@@ -541,6 +611,499 @@ private fun SlotItemCard(
     }
 }
 
+@Composable
+private fun SlotOrdersDialog(
+    slot: SlotItem,
+    orders: List<Booking>,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text(
+                    text = "Đơn hàng khung ${slot.startTime} - ${slot.endTime.ifBlank { "kết thúc" }}",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MerchantTextPrimary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Ngày ${slot.date} · Đã đặt ${slot.booked}/${slot.capacity} khách · ${orders.size} đơn",
+                    fontSize = 12.sp,
+                    color = MerchantTextSecondary,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        },
+        text = {
+            if (orders.isEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MerchantBackground)
+                        .border(1.dp, MerchantBorder, RoundedCornerShape(10.dp))
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = MerchantTextHint,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Khung giờ ${slot.startTime} - ${slot.endTime.ifBlank { "kết thúc" }} chưa có đơn hàng nào.",
+                        fontSize = 13.sp,
+                        color = MerchantTextSecondary
+                    )
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    orders.forEach { order ->
+                        SlotOrderDetailCard(order = order)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Đóng", fontWeight = FontWeight.Bold, color = MerchantPrimary)
+            }
+        }
+    )
+}
+
+@Composable
+private fun SlotOrderDetailCard(order: Booking) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(MerchantBackground)
+            .border(1.dp, MerchantBorder, RoundedCornerShape(10.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "#${order.id}",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = MerchantTextPrimary
+            )
+            StatusBadge(status = order.status)
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = null,
+                tint = MerchantPrimary,
+                modifier = Modifier.size(15.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "${order.customerName} · ${order.customerPhone}",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MerchantTextPrimary
+            )
+        }
+
+        if (order.serviceNames.isNotEmpty()) {
+            Row(verticalAlignment = Alignment.Top) {
+                Icon(
+                    imageVector = Icons.Default.Spa,
+                    contentDescription = null,
+                    tint = MerchantSecondary,
+                    modifier = Modifier.size(15.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = order.serviceNames.joinToString(", "),
+                    fontSize = 12.5.sp,
+                    color = MerchantTextPrimary,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+
+        if (order.startAt > 0L && order.endAt > order.startAt) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.AccessTime,
+                    contentDescription = null,
+                    tint = MerchantTextSecondary,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Giờ phục vụ: ${Formatters.formatTime(order.startAt)} - ${Formatters.formatTime(order.endAt)}",
+                    fontSize = 12.sp,
+                    color = MerchantTextSecondary
+                )
+            }
+        }
+
+        if (order.createdAt > 0L) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.CalendarToday,
+                    contentDescription = null,
+                    tint = MerchantTextHint,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Đặt lúc: ${Formatters.formatDateTime(order.createdAt)}",
+                    fontSize = 11.5.sp,
+                    color = MerchantTextHint
+                )
+            }
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Default.AccountBalanceWallet,
+                contentDescription = null,
+                tint = MerchantPrimary,
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "Tiền cọc: ${Formatters.formatCurrency(order.depositAmount)}",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = MerchantPrimary
+            )
+        }
+
+        if (order.note.isNotBlank()) {
+            Text(
+                text = "Ghi chú: ${order.note}",
+                fontSize = 11.5.sp,
+                color = MerchantTextSecondary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFFFFF8E1))
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
+            )
+        }
+
+        if (order.status == MerchantConstants.BOOKING_STATUS_CANCELLED && !order.cancelReason.isNullOrBlank()) {
+            Text(
+                text = "Lý do hủy/từ chối: ${order.cancelReason}",
+                fontSize = 11.5.sp,
+                color = MerchantError,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(MerchantError.copy(alpha = 0.08f))
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SlotPickerDialog(
+    slots: List<SlotItem>,
+    onSelectSlot: (SlotItem) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Chọn khung giờ muốn sửa",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = MerchantTextPrimary
+            )
+        },
+        text = {
+            if (slots.isEmpty()) {
+                Text(
+                    text = "Chưa có khung giờ nào để chỉnh sửa.",
+                    fontSize = 13.sp,
+                    color = MerchantTextSecondary
+                )
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 360.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Chọn 1 khung giờ bên dưới để chỉnh sửa:",
+                        fontSize = 12.sp,
+                        color = MerchantTextSecondary
+                    )
+                    slots.forEach { slot ->
+                        val statusLabel = when {
+                            slot.isBlocked -> "ĐÃ KHÓA"
+                            slot.booked >= slot.capacity -> "ĐÃ ĐẦY"
+                            else -> "CÒN CHỖ"
+                        }
+                        val statusColor = when {
+                            slot.isBlocked -> MerchantTextHint
+                            slot.booked >= slot.capacity -> MerchantError
+                            else -> MerchantPrimary
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MerchantBackground)
+                                .border(1.dp, MerchantBorder, RoundedCornerShape(10.dp))
+                                .clickable { onSelectSlot(slot) }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AccessTime,
+                                    contentDescription = null,
+                                    tint = statusColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = "${slot.startTime} - ${slot.endTime.ifBlank { "kết thúc" }}",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MerchantTextPrimary
+                                    )
+                                    Text(
+                                        text = "Đã đặt: ${slot.booked}/${slot.capacity} khách · $statusLabel",
+                                        fontSize = 11.5.sp,
+                                        color = statusColor
+                                    )
+                                }
+                            }
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Sửa khung giờ",
+                                tint = MerchantPrimary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = "Đóng", color = MerchantTextSecondary)
+            }
+        }
+    )
+}
+
+@Composable
+private fun SlotEditDialog(
+    initialSlot: SlotItem,
+    otherSlots: List<SlotItem>,
+    onBackToPicker: () -> Unit,
+    onDismiss: () -> Unit,
+    onSave: (SlotItem) -> Unit
+) {
+    var startTime by remember(initialSlot.id) { mutableStateOf(initialSlot.startTime) }
+    var endTime by remember(initialSlot.id) { mutableStateOf(initialSlot.endTime) }
+    var capacity by remember(initialSlot.id) { mutableStateOf(initialSlot.capacity) }
+    var isBlocked by remember(initialSlot.id) { mutableStateOf(initialSlot.isBlocked) }
+    var errorText by remember(initialSlot.id) { mutableStateOf<String?>(null) }
+
+    val validator = remember { SlotEditValidator() }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Sửa khung giờ",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MerchantTextPrimary
+                )
+                TextButton(
+                    onClick = onBackToPicker,
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+                ) {
+                    Text(
+                        text = "Chọn khung khác",
+                        fontSize = 12.sp,
+                        color = MerchantPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (errorText != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MerchantError.copy(alpha = 0.1f))
+                            .padding(8.dp)
+                    ) {
+                        Text(text = errorText ?: "", fontSize = 12.sp, color = MerchantError)
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = startTime,
+                        onValueChange = { startTime = it; errorText = null },
+                        label = { Text("Bắt đầu (HH:mm)", maxLines = 1) },
+                        placeholder = { Text("09:00") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = endTime,
+                        onValueChange = { endTime = it; errorText = null },
+                        label = { Text("Kết thúc (HH:mm)", maxLines = 1) },
+                        placeholder = { Text("10:00") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Text(
+                    text = "Đã có ${initialSlot.booked} khách đặt trước trong khung giờ này.",
+                    fontSize = 12.sp,
+                    color = MerchantTextSecondary
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Sức chứa tối đa:",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MerchantTextPrimary
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = { if (capacity > maxOf(1, initialSlot.booked)) capacity-- },
+                            enabled = capacity > maxOf(1, initialSlot.booked)
+                        ) {
+                            Icon(Icons.Default.RemoveCircleOutline, contentDescription = "Giảm", tint = MerchantPrimary)
+                        }
+                        Text(
+                            text = "$capacity khách",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MerchantTextPrimary,
+                            modifier = Modifier.padding(horizontal = 6.dp)
+                        )
+                        IconButton(
+                            onClick = { if (capacity < 20) capacity++ }
+                        ) {
+                            Icon(Icons.Default.AddCircleOutline, contentDescription = "Tăng", tint = MerchantPrimary)
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Khóa khung giờ này",
+                        fontSize = 13.sp,
+                        color = MerchantTextPrimary
+                    )
+                    Switch(
+                        checked = isBlocked,
+                        onCheckedChange = { isBlocked = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = MerchantError
+                        )
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val candidate = initialSlot.copy(
+                        startTime = startTime.trim(),
+                        endTime = endTime.trim(),
+                        capacity = capacity,
+                        isBlocked = isBlocked
+                    )
+                    when (val result = validator.validate(candidate, otherSlots)) {
+                        is SlotEditValidator.ValidationResult.Invalid -> {
+                            errorText = result.errorMessage
+                        }
+                        is SlotEditValidator.ValidationResult.Valid -> {
+                            val sMin = ScheduleValidator.parseTimeToMinutes(candidate.startTime)!!
+                            val eMin = ScheduleValidator.parseTimeToMinutes(candidate.endTime)!!
+                            onSave(
+                                candidate.copy(
+                                    startTime = ScheduleValidator.formatMinutesToTime(sMin),
+                                    endTime = ScheduleValidator.formatMinutesToTime(eMin)
+                                )
+                            )
+                        }
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = MerchantPrimary)
+            ) {
+                Text(text = "Lưu thay đổi", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = "Hủy", color = MerchantTextSecondary)
+            }
+        }
+    )
+}
+
 /**
  * Tab 1: Cấu hình ca làm việc & ngày nghỉ tuần / lễ tết (Requirement #4)
  */
@@ -555,8 +1118,6 @@ private fun ScheduleConfigurationTab(
     var hasBreakTime by remember { mutableStateOf(!schedule.breakStartTime.isNullOrBlank()) }
     var breakStart by remember { mutableStateOf(schedule.breakStartTime ?: "12:00") }
     var breakEnd by remember { mutableStateOf(schedule.breakEndTime ?: "13:00") }
-    var slotDuration by remember { mutableStateOf(schedule.slotDurationMinutes) }
-    var defaultCapacity by remember { mutableStateOf(schedule.defaultCapacity) }
     var offDates by remember { mutableStateOf(schedule.offDates) }
     var newOffDateInput by remember { mutableStateOf("") }
 
@@ -718,71 +1279,7 @@ private fun ScheduleConfigurationTab(
             }
         }
 
-        // 4. Thời lượng slot & Sức chứa mặc định
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = MerchantCard)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Thời lượng & Sức chứa mặc định",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MerchantTextPrimary
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Text(
-                    text = "Thời lượng mỗi khung giờ:",
-                    fontSize = 12.sp,
-                    color = MerchantTextSecondary
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    listOf(30, 45, 60, 90).forEach { dur ->
-                        FilterChip(
-                            selected = slotDuration == dur,
-                            onClick = { slotDuration = dur },
-                            label = { Text("$dur phút", fontSize = 12.sp) }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = "Sức chứa tối đa mặc định (khách/slot):",
-                    fontSize = 12.sp,
-                    color = MerchantTextSecondary
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = { if (defaultCapacity > 1) defaultCapacity-- },
-                        enabled = defaultCapacity > 1
-                    ) {
-                        Icon(Icons.Default.RemoveCircleOutline, contentDescription = null, tint = MerchantPrimary)
-                    }
-                    Text(
-                        text = "$defaultCapacity khách",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MerchantTextPrimary,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
-                    IconButton(
-                        onClick = { if (defaultCapacity < 20) defaultCapacity++ }
-                    ) {
-                        Icon(Icons.Default.AddCircleOutline, contentDescription = null, tint = MerchantPrimary)
-                    }
-                }
-            }
-        }
-
-        // 5. Ngày nghỉ lễ tết / đột xuất
+        // 4. Ngày nghỉ lễ tết / đột xuất
         Card(
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MerchantCard)
@@ -864,8 +1361,6 @@ private fun ScheduleConfigurationTab(
                     closeTime = closeTime.trim(),
                     breakStartTime = if (hasBreakTime) breakStart.trim() else null,
                     breakEndTime = if (hasBreakTime) breakEnd.trim() else null,
-                    slotDurationMinutes = slotDuration,
-                    defaultCapacity = defaultCapacity,
                     offDates = offDates
                 )
                 onSave(updated)

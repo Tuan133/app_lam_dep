@@ -1,6 +1,12 @@
 package com.applamdep.merchant.ui.service
 
+import android.content.Intent
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -32,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.app_lam_dep.R
+import com.applamdep.customer.core.util.ShopImageAssets
 import com.applamdep.merchant.core.base.UiState
 import com.applamdep.merchant.core.di.MerchantViewModelFactory
 import com.applamdep.merchant.core.util.Formatters
@@ -220,16 +229,17 @@ fun MerchantServiceManagementScreen(
 
         // Dialog Thêm hoặc Sửa dịch vụ
         if (isAddingNew || editingService != null) {
+            val initialCategory = if (selectedCategory != "Tất cả") selectedCategory else "Nail Art"
             val initial = editingService ?: ServiceItem(
                 id = "",
                 shopId = shopId,
                 name = "",
-                category = if (selectedCategory != "Tất cả") selectedCategory else "Nail Art",
+                category = initialCategory,
                 price = 150000L,
                 durationMinutes = 45,
                 description = "",
                 active = true,
-                imageUrl = "https://images.unsplash.com/photo-1604654894610-df63bc536371?w=500&auto=format&fit=crop"
+                imageUrl = defaultPresetForCategory(initialCategory)
             )
 
             ServiceEditDialog(
@@ -361,7 +371,7 @@ private fun ServiceItemCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 AsyncImage(
-                    model = service.imageUrl ?: "https://images.unsplash.com/photo-1604654894610-df63bc536371?w=500&auto=format&fit=crop",
+                    model = resolveServiceImageModel(service),
                     contentDescription = service.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -449,7 +459,10 @@ private fun ServiceItemCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Switch(
                         checked = service.active,
                         onCheckedChange = onToggleActive,
@@ -459,16 +472,23 @@ private fun ServiceItemCard(
                             uncheckedThumbColor = Color.White,
                             uncheckedTrackColor = MerchantBorder
                         ),
-                        modifier = Modifier.scale(0.8f)
+                        modifier = Modifier.graphicsLayer {
+                            scaleX = 0.8f
+                            scaleY = 0.8f
+                            transformOrigin = TransformOrigin(0f, 0.5f)
+                        }
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = if (service.active) stringResource(R.string.merchant_service_active) else stringResource(R.string.merchant_service_inactive),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = if (service.active) MerchantPrimary else MerchantTextHint
+                        color = if (service.active) MerchantPrimary else MerchantTextHint,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
+
+                Spacer(modifier = Modifier.width(8.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedButton(
@@ -501,10 +521,6 @@ private fun ServiceItemCard(
     }
 }
 
-private fun Modifier.scale(scale: Float): Modifier = this.then(
-    Modifier.size(width = (52 * scale).dp, height = (32 * scale).dp)
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ServiceEditDialog(
@@ -513,16 +529,39 @@ private fun ServiceEditDialog(
     onDismiss: () -> Unit,
     onSave: (ServiceItem) -> Unit
 ) {
+    val context = LocalContext.current
     var name by remember { mutableStateOf(initialService.name) }
     var priceText by remember { mutableStateOf(if (initialService.price > 0) initialService.price.toString() else "") }
     var durationText by remember { mutableStateOf(initialService.durationMinutes.toString()) }
     var category by remember { mutableStateOf(initialService.category.ifBlank { "Nail Art" }) }
+    var imageUrl by remember { mutableStateOf(initialService.imageUrl) }
+    var showUrlInput by remember {
+        mutableStateOf(
+            !initialService.imageUrl.isNullOrBlank() &&
+                initialService.imageUrl.startsWith("http", ignoreCase = true)
+        )
+    }
     var description by remember { mutableStateOf(initialService.description) }
     var active by remember { mutableStateOf(initialService.active) }
     var errorText by remember { mutableStateOf<String?>(null) }
 
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) {
+            }
+            imageUrl = uri.toString()
+            showUrlInput = false
+        }
+    }
+
     val popularCategories = listOf("Nail Art", "Nối Mi & Mày", "Gội Đầu Dưỡng Sinh", "Chăm Sóc Da", "Make-up", "Massage")
-    val quickDurations = listOf(30, 45, 60, 90, 120)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -550,6 +589,116 @@ private fun ServiceEditDialog(
                             .padding(8.dp)
                     ) {
                         Text(text = errorText ?: "", fontSize = 12.sp, color = MerchantError)
+                    }
+                }
+
+                // Chỉnh sửa / Chọn hình ảnh dịch vụ
+                Text(text = "Hình ảnh dịch vụ:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MerchantTextSecondary)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    AsyncImage(
+                        model = resolveServiceImageModel(imageUrl, name.ifBlank { category }),
+                        contentDescription = "Ảnh xem trước dịch vụ",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .border(1.dp, MerchantBorder, RoundedCornerShape(10.dp))
+                            .clickable {
+                                imagePickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            }
+                    )
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                imagePickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            border = BorderStroke(1.dp, MerchantPrimary),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MerchantPrimary),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(34.dp)
+                        ) {
+                            Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(text = "Chọn ảnh từ máy", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            FilterChip(
+                                selected = showUrlInput,
+                                onClick = { showUrlInput = !showUrlInput },
+                                label = { Text("Nhập link URL", fontSize = 11.sp) }
+                            )
+                        }
+                    }
+                }
+
+                if (showUrlInput) {
+                    OutlinedTextField(
+                        value = if (imageUrl?.startsWith("preset:") == true) "" else (imageUrl ?: ""),
+                        onValueChange = { imageUrl = it },
+                        label = { Text("Link hình ảnh (URL)") },
+                        placeholder = { Text("https://...") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                // Ảnh mẫu có sẵn ngoại tuyến để chọn nhanh
+                Text(text = "Hoặc chọn nhanh ảnh mẫu:", fontSize = 11.sp, color = MerchantTextSecondary)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SERVICE_IMAGE_PRESETS.forEach { preset ->
+                        val isSelected = imageUrl == preset.key
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    imageUrl = preset.key
+                                    showUrlInput = false
+                                }
+                                .padding(2.dp)
+                        ) {
+                            AsyncImage(
+                                model = preset.drawableRes,
+                                contentDescription = preset.label,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(
+                                        width = if (isSelected) 2.dp else 1.dp,
+                                        color = if (isSelected) MerchantPrimary else MerchantBorder,
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = preset.label,
+                                fontSize = 10.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) MerchantPrimary else MerchantTextSecondary
+                            )
+                        }
                     }
                 }
 
@@ -586,33 +735,20 @@ private fun ServiceEditDialog(
                     OutlinedTextField(
                         value = priceText,
                         onValueChange = { priceText = it; errorText = null },
-                        label = { Text(stringResource(R.string.merchant_service_price)) },
+                        label = { Text(stringResource(R.string.merchant_service_price), maxLines = 1) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
-                        modifier = Modifier.weight(1.2f)
+                        modifier = Modifier.weight(1.1f)
                     )
 
                     OutlinedTextField(
                         value = durationText,
                         onValueChange = { durationText = it; errorText = null },
-                        label = { Text(stringResource(R.string.merchant_service_duration)) },
+                        label = { Text("Thời lượng (phút)", maxLines = 1) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier.weight(0.9f)
                     )
-                }
-
-                // Quick duration chips
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    quickDurations.forEach { d ->
-                        AssistChip(
-                            onClick = { durationText = d.toString() },
-                            label = { Text("${d}p", fontSize = 11.sp) }
-                        )
-                    }
                 }
 
                 OutlinedTextField(
@@ -661,11 +797,13 @@ private fun ServiceEditDialog(
                         return@Button
                     }
 
+                    val normalizedImageUrl = imageUrl?.trim()?.ifBlank { null }
                     val updated = initialService.copy(
                         name = name.trim(),
                         category = category.trim(),
                         price = p,
                         durationMinutes = d,
+                        imageUrl = normalizedImageUrl,
                         description = description.trim(),
                         active = active
                     )
@@ -682,4 +820,47 @@ private fun ServiceEditDialog(
             }
         }
     )
+}
+
+private data class ServiceImagePreset(
+    val key: String,
+    val label: String,
+    @DrawableRes val drawableRes: Int
+)
+
+private val SERVICE_IMAGE_PRESETS = listOf(
+    ServiceImagePreset("preset:srv_nail_gel", "Sơn Gel", R.drawable.srv_nail_gel),
+    ServiceImagePreset("preset:srv_nail_art", "Nail Art", R.drawable.srv_nail_art),
+    ServiceImagePreset("preset:nail_french_gel", "French Gel", R.drawable.nail_french_gel),
+    ServiceImagePreset("preset:nail_cateye_aurora", "Mắt Mèo", R.drawable.nail_cateye_aurora),
+    ServiceImagePreset("preset:srv_eyelash", "Nối Mi", R.drawable.srv_eyelash),
+    ServiceImagePreset("preset:srv_spa_facial", "Chăm Da", R.drawable.srv_spa_facial),
+    ServiceImagePreset("preset:srv_spa_massage", "Massage", R.drawable.srv_spa_massage),
+    ServiceImagePreset("preset:srv_hair_cut", "Cắt Tóc", R.drawable.srv_hair_cut),
+    ServiceImagePreset("preset:srv_hair_wave", "Uốn Tóc", R.drawable.srv_hair_wave),
+    ServiceImagePreset("preset:srv_makeup_bride", "Makeup", R.drawable.srv_makeup_bride)
+)
+
+private fun defaultPresetForCategory(category: String): String {
+    return when {
+        category.contains("Mi", ignoreCase = true) -> "preset:srv_eyelash"
+        category.contains("Da", ignoreCase = true) -> "preset:srv_spa_facial"
+        category.contains("Gội", ignoreCase = true) || category.contains("Massage", ignoreCase = true) -> "preset:srv_spa_massage"
+        category.contains("Make", ignoreCase = true) -> "preset:srv_makeup_bride"
+        category.contains("Tóc", ignoreCase = true) -> "preset:srv_hair_cut"
+        else -> "preset:srv_nail_gel"
+    }
+}
+
+private fun resolveServiceImageModel(service: ServiceItem): Any {
+    return resolveServiceImageModel(service.imageUrl, service.id.ifBlank { service.name.ifBlank { service.category } })
+}
+
+private fun resolveServiceImageModel(imageUrl: String?, fallbackKey: String): Any {
+    if (!imageUrl.isNullOrBlank()) {
+        val preset = SERVICE_IMAGE_PRESETS.find { it.key == imageUrl }
+        if (preset != null) return preset.drawableRes
+        return imageUrl
+    }
+    return ShopImageAssets.getServiceDrawableRes(fallbackKey)
 }

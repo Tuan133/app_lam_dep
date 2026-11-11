@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -144,14 +146,18 @@ fun PartnerDashboardScreen(
 
                             Spacer(modifier = Modifier.height(10.dp))
 
+                            val shopStatusMap by com.applamdep.common.AppBookingSyncBridge.shopStatusFlow.collectAsState()
+                            val isShopClosed = shopStatusMap["shop_01"] == com.applamdep.merchant.core.constants.MerchantConstants.SHOP_STATUS_CLOSED
                             // Status Pill Button
                             Box(
                                 modifier = Modifier
                                     .clip(CircleShape)
                                     .background(
-                                        Brush.horizontalGradient(
-                                            listOf(Color(0xFFB58451), Color(0xFFC79863))
-                                        )
+                                        if (isShopClosed) {
+                                            Brush.horizontalGradient(listOf(Color(0xFFD32F2F), Color(0xFFB71C1C)))
+                                        } else {
+                                            Brush.horizontalGradient(listOf(Color(0xFFB58451), Color(0xFFC79863)))
+                                        }
                                     )
                                     .border(1.dp, Color(0xFFFFDFB0).copy(alpha = 0.5f), CircleShape)
                                     .padding(horizontal = 14.dp, vertical = 7.dp)
@@ -162,7 +168,7 @@ fun PartnerDashboardScreen(
                                 ) {
                                     GlowIcon(icon = GlowIcons.ChevronRight, tint = Color.White, size = 12.dp)
                                     Text(
-                                        text = "Đang hoạt động",
+                                        text = if (isShopClosed) "Đã đóng cửa" else "Đang hoạt động",
                                         color = Color.White,
                                         fontSize = 12.5.sp,
                                         fontWeight = FontWeight.Bold

@@ -1,6 +1,7 @@
 package com.applamdep.customer.core.di
 
 import android.content.Context
+import com.applamdep.common.AppBookingSyncBridge
 import com.applamdep.customer.data.repository.FakeBookingRepository
 import com.applamdep.customer.data.repository.FakeReviewRepository
 import com.applamdep.customer.data.repository.FakeShopRepository
@@ -34,11 +35,15 @@ class DefaultAppContainer(
     private val context: Context? = null
 ) : AppContainer {
     override val shopRepository: ShopRepository by lazy {
-        FakeShopRepository(context = context)
+        FakeShopRepository(context = context).also {
+            AppBookingSyncBridge.registerCustomerShopRepository(it)
+        }
     }
 
     override val bookingRepository: BookingRepository by lazy {
-        FakeBookingRepository()
+        FakeBookingRepository(syncGateway = AppBookingSyncBridge).also {
+            AppBookingSyncBridge.registerCustomerBookingRepository(it)
+        }
     }
 
     override val walletRepository: WalletRepository by lazy {
@@ -46,7 +51,9 @@ class DefaultAppContainer(
     }
 
     override val reviewRepository: ReviewRepository by lazy {
-        FakeReviewRepository()
+        FakeReviewRepository(syncGateway = AppBookingSyncBridge).also {
+            AppBookingSyncBridge.registerCustomerReviewRepository(it)
+        }
     }
 
     override val cancellationPolicy: CancellationPolicy by lazy {

@@ -39,7 +39,7 @@ fun BottomNavigationBar(
                 NavTab("Trang chủ", GlowIcons.Home),
                 NavTab("Lịch", GlowIcons.Calendar),
                 NavTab("Tin nhắn", GlowIcons.Chat),
-                NavTab("Tôi", GlowIcons.Settings)
+                NavTab("Tôi", GlowIcons.User)
             )
         }
         else -> {

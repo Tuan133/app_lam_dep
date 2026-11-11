@@ -30,11 +30,16 @@ data class ShopProfile(
     val ratingAvg: Double = 5.0,
     val ratingCount: Int = 0,
     val lastEditedAt: Long? = null,
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val closeReason: String? = null,
+    val closeNote: String? = null,
+    val closedAt: Long? = null,
+    val closedUntilDate: String? = null
 ) {
     val isApproved: Boolean get() = status == MerchantConstants.SHOP_STATUS_APPROVED
     val isPending: Boolean get() = status == MerchantConstants.SHOP_STATUS_PENDING
     val isRejected: Boolean get() = status == MerchantConstants.SHOP_STATUS_REJECTED
+    val isClosed: Boolean get() = status == MerchantConstants.SHOP_STATUS_CLOSED
     val isPlanValid: Boolean get() = planExpiry > System.currentTimeMillis()
     val isVip: Boolean get() = plan == MerchantConstants.PLAN_VIP
     val shopName: String get() = name
@@ -101,7 +106,7 @@ data class WorkSchedule(
     val breakEndTime: String? = "13:00",
     val offDates: List<String> = emptyList(),
     val slotDurationMinutes: Int = 60,
-    val defaultCapacity: Int = 3
+    val defaultCapacity: Int = 1
 )
 
 /**
@@ -127,7 +132,7 @@ data class SlotItem(
     val date: String = "",
     val startTime: String = "",
     val endTime: String = "",
-    val capacity: Int = 3,
+    val capacity: Int = 1,
     val booked: Int = 0,
     val isBlocked: Boolean = false
 ) {
@@ -158,8 +163,11 @@ data class Booking(
     val createdAt: Long = System.currentTimeMillis(),
     val completedAt: Long? = null,
     val autoCompleted: Boolean = false,
+    val autoApproved: Boolean = false,
+    val isReviewed: Boolean = false,
     val cancelReason: String? = null,
-    val cancelledAt: Long? = null
+    val cancelledAt: Long? = null,
+    val bookingDate: String = ""
 )
 
 /**

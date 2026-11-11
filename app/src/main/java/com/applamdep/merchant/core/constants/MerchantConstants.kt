@@ -28,6 +28,7 @@ object MerchantConstants {
     const val SHOP_STATUS_PENDING = "PENDING"
     const val SHOP_STATUS_APPROVED = "APPROVED"
     const val SHOP_STATUS_REJECTED = "REJECTED"
+    const val SHOP_STATUS_CLOSED = "CLOSED"
 
     // Gói dịch vụ đối tác
     const val PLAN_NORMAL = "NORMAL"
@@ -56,7 +57,18 @@ object MerchantConstants {
     const val REVIEW_STATUS_REMOVED = "REMOVED"
 
     // Quy tắc nghiệp vụ bắt buộc
+    const val AUTO_APPROVE_DELAY_MINUTES = 30L
+    const val MERCHANT_CANCEL_LOCK_BEFORE_START_MINUTES = 30L
     const val AUTO_COMPLETE_DELAY_MINUTES = 30L
     const val CANCELLATION_REFUND_LIMIT_HOURS = 2L
     const val REQUIRED_DEPOSIT_OPTIONS_COUNT = 5
+
+    // Lý do hủy lịch đề xuất sẵn cho đơn đã xác nhận
+    val SUGGESTED_CANCEL_REASONS = listOf(
+        "Kỹ thuật viên bận đột xuất",
+        "Cửa hàng quá tải khung giờ này",
+        "Bảo trì thiết bị / sự cố điện nước",
+        "Khách hàng yêu cầu dời hoặc hủy lịch",
+        "Hết sản phẩm / nguyên liệu cho dịch vụ"
+    )
 }

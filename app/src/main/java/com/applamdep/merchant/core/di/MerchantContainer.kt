@@ -1,5 +1,6 @@
 package com.applamdep.merchant.core.di
 
+import com.applamdep.common.AppBookingSyncBridge
 import com.applamdep.merchant.core.network.MerchantApiService
 import com.applamdep.merchant.core.network.MerchantRetrofitClient
 import com.applamdep.merchant.data.repository.BookingRepositoryImpl
@@ -39,16 +40,30 @@ interface MerchantContainer {
 }
 
 class DefaultMerchantContainer : MerchantContainer {
-    override val shopRepository: ShopRepository by lazy { ShopRepositoryImpl() }
+    override val shopRepository: ShopRepository by lazy {
+        ShopRepositoryImpl(syncGateway = AppBookingSyncBridge)
+    }
     override val serviceRepository: ServiceRepository by lazy { ServiceRepositoryImpl() }
     override val scheduleRepository: ScheduleRepository by lazy { ScheduleRepositoryImpl() }
     override val slotRepository: SlotRepository by lazy { SlotRepositoryImpl() }
-    override val bookingRepository: BookingRepository by lazy { BookingRepositoryImpl() }
-    override val reviewRepository: ReviewRepository by lazy { ReviewRepositoryImpl() }
-    override val transactionRepository: TransactionRepository by lazy { TransactionRepositoryImpl() }
+    override val bookingRepository: BookingRepository by lazy {
+        BookingRepositoryImpl(syncGateway = AppBookingSyncBridge).also {
+            AppBookingSyncBridge.registerMerchantBookingRepository(it)
+        }
+    }
+    override val reviewRepository: ReviewRepository by lazy {
+        ReviewRepositoryImpl().also {
+            AppBookingSyncBridge.registerMerchantReviewRepository(it)
+        }
+    }
+    override val transactionRepository: TransactionRepository by lazy {
+        TransactionRepositoryImpl().also {
+            AppBookingSyncBridge.registerMerchantTransactionRepository(it)
+        }
+    }
     override val planRepository: PlanRepository by lazy { PlanRepositoryImpl() }
     override val statsRepository: StatsRepository by lazy {
-        StatsRepositoryImpl(bookingRepository, reviewRepository)
+        StatsRepositoryImpl(bookingRepository, reviewRepository, transactionRepository)
     }
     override val apiService: MerchantApiService by lazy { MerchantRetrofitClient.apiService }
 }

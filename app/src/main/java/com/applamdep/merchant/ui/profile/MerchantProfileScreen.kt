@@ -1,6 +1,7 @@
 package com.applamdep.merchant.ui.profile
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -12,6 +13,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material3.*
@@ -25,8 +28,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.app_lam_dep.R
+import com.example.app_lam_dep.ui.screens.ShopMembershipPlansScreen
 import com.applamdep.merchant.core.base.UiState
+import com.applamdep.merchant.core.constants.MerchantConstants
 import com.applamdep.merchant.core.util.Formatters
 import com.applamdep.merchant.domain.model.ShopProfile
 import com.applamdep.merchant.ui.component.EmptyStateView
@@ -163,6 +170,9 @@ private fun ProfileContent(
     var showWarningDialog by remember { mutableStateOf(false) }
     var pendingSaveProfile by remember { mutableStateOf<ShopProfile?>(null) }
     var showLogoutConfirmInContent by remember { mutableStateOf(false) }
+    var showMembershipPlansDialog by remember { mutableStateOf(false) }
+    var showClosureFlowDialog by remember { mutableStateOf(false) }
+    val shopBookings by viewModel.shopBookings.collectAsState()
 
     val context = LocalContext.current
 
@@ -196,6 +206,26 @@ private fun ProfileContent(
                             fontSize = 11.sp,
                             color = MerchantWarning
                         )
+                    }
+                    if (shop.isClosed) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        val untilLabel = shop.closedUntilDate?.takeIf { it.isNotBlank() }
+                            ?.let { " • Tạm đóng ngày $it" }
+                            ?: " • Cho đến khi mở lại"
+                        val reasonLabel = shop.closeReason?.takeIf { it.isNotBlank() } ?: "Tạm ngừng nhận khách"
+                        Text(
+                            text = "Lý do đóng cửa: $reasonLabel$untilLabel",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFFD32F2F)
+                        )
+                        shop.closeNote?.takeIf { it.isNotBlank() }?.let { note ->
+                            Text(
+                                text = "Ghi chú: $note",
+                                fontSize = 11.sp,
+                                color = MerchantTextSecondary
+                            )
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.width(8.dp))
@@ -351,6 +381,105 @@ private fun ProfileContent(
             }
         }
 
+        // KHỐI 4: Gói hội viên cửa hàng
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MerchantSurface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            val isVipPlan = shop.plan.equals("VIP", ignoreCase = true)
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = "4. Gói hội viên cửa hàng",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MerchantPrimary
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Gói hiện tại",
+                        fontSize = 13.sp,
+                        color = MerchantTextSecondary
+                    )
+                    Surface(
+                        color = if (isVipPlan) Color(0xFFFFF8E1) else MerchantPrimary.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = if (isVipPlan) "Gói VIP" else "Gói Thường",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isVipPlan) Color(0xFFB45309) else MerchantPrimary,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Chu kỳ gói",
+                        fontSize = 13.sp,
+                        color = MerchantTextSecondary
+                    )
+                    Text(
+                        text = "${shop.planTermMonths} tháng",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MerchantTextPrimary
+                    )
+                }
+                if (shop.planExpiry > 0L) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Hạn sử dụng",
+                            fontSize = 13.sp,
+                            color = MerchantTextSecondary
+                        )
+                        Text(
+                            text = Formatters.formatDate(shop.planExpiry),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MerchantTextPrimary
+                        )
+                    }
+                }
+                OutlinedButton(
+                    onClick = { showMembershipPlansDialog = true },
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, MerchantPrimary),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MerchantPrimary),
+                    modifier = Modifier.fillMaxWidth().height(46.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Storefront,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Đăng ký / Nâng cấp gói hội viên",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+
         // NÚT LƯU THAY ĐỔI
         Button(
             onClick = {
@@ -388,6 +517,76 @@ private fun ProfileContent(
         }
 
         Spacer(modifier = Modifier.height(4.dp))
+
+        if (shop.isClosed) {
+            Button(
+                onClick = {
+                    viewModel.reopenShop(
+                        onSuccess = {
+                            Toast.makeText(context, "Cửa hàng đã mở cửa hoạt động lại!", Toast.LENGTH_SHORT).show()
+                        },
+                        onError = { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
+                    )
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B8A5A)),
+                modifier = Modifier.fillMaxWidth().height(50.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LockOpen,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Mở cửa hoạt động lại",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+            OutlinedButton(
+                onClick = { showClosureFlowDialog = true },
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, Color(0xFF8B1538).copy(alpha = 0.7f)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF8B1538)),
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Storefront,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Chọn thời gian đóng / Huỷ lịch",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        } else {
+            Button(
+                onClick = { showClosureFlowDialog = true },
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B1538)),
+                modifier = Modifier.fillMaxWidth().height(50.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Storefront,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Đóng cửa",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
 
         OutlinedButton(
             onClick = { showLogoutConfirmInContent = true },
@@ -494,6 +693,67 @@ private fun ProfileContent(
                     Text("Hủy", color = MerchantTextSecondary)
                 }
             }
+        )
+    }
+
+    if (showMembershipPlansDialog) {
+        val currentPlanTitle = if (shop.plan.equals("VIP", ignoreCase = true)) {
+            "Gói VIP Tăng Đề Xuất (${shop.planTermMonths} tháng)"
+        } else {
+            "Gói Thường Mở Sàn (${shop.planTermMonths} Tháng)"
+        }
+        Dialog(
+            onDismissRequest = { showMembershipPlansDialog = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            ShopMembershipPlansScreen(
+                currentPlanName = currentPlanTitle,
+                onBack = { showMembershipPlansDialog = false },
+                onPlanSubscribed = { selectedPlanTitle ->
+                    val targetPlan = if (selectedPlanTitle.contains("VIP", ignoreCase = true)) "VIP" else "NORMAL"
+                    val termMonths = Regex("\\d+").find(selectedPlanTitle)?.value?.toIntOrNull() ?: 1
+                    showMembershipPlansDialog = false
+                    viewModel.updateMembershipPlan(
+                        plan = targetPlan,
+                        termMonths = termMonths,
+                        onSuccess = { msg ->
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                        },
+                        onError = { err ->
+                            Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                        }
+                    )
+                }
+            )
+        }
+    }
+
+    if (showClosureFlowDialog) {
+        ShopClosureFlowDialog(
+            bookings = shopBookings,
+            onConfirmUntilReopen = { reason, note, onDone ->
+                viewModel.closeShopUntilReopen(
+                    reason = reason,
+                    note = note,
+                    onSuccess = { onDone() },
+                    onError = { err ->
+                        Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                    }
+                )
+            },
+            onConfirmScheduledClosureAndCancel = { date, bookingIds, cancelReason, proposalNote, onDone ->
+                viewModel.closeShopForScheduleAndCancelBookings(
+                    date = date,
+                    bookingIdsToCancel = bookingIds,
+                    cancelReason = cancelReason,
+                    proposalNote = proposalNote,
+                    onSuccess = { _ -> onDone() },
+                    onError = { err ->
+                        Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                    }
+                )
+            },
+            onDismiss = { showClosureFlowDialog = false }
         )
     }
 }

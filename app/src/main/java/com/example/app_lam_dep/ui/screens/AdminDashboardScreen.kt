@@ -938,8 +938,19 @@ fun AdminDashboardScreen(
                         }
                     }
 
-                    // Status filters: Tất cả, Chờ duyệt, Đang hoạt động, Tạm khóa, Từ chối
-                    val shopFilterTabs = listOf("Tất cả", "Chờ duyệt", "Đang hoạt động", "Tạm khóa", "Từ chối")
+                    val syncedStatuses by com.applamdep.common.AppBookingSyncBridge.shopStatusFlow.collectAsState()
+                    val effectiveStatusOf: (AdminShopItem) -> String = { item ->
+                        if (item.code == "SALON-001" &&
+                            syncedStatuses["shop_01"] == com.applamdep.merchant.core.constants.MerchantConstants.SHOP_STATUS_CLOSED
+                        ) {
+                            "Đã đóng cửa"
+                        } else {
+                            item.status
+                        }
+                    }
+
+                    // Status filters: Tất cả, Chờ duyệt, Đang hoạt động, Đã đóng cửa, Tạm khóa, Từ chối
+                    val shopFilterTabs = listOf("Tất cả", "Chờ duyệt", "Đang hoạt động", "Đã đóng cửa", "Tạm khóa", "Từ chối")
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(shopFilterTabs) { fTab ->
                             val isSel = fTab == shopStatusFilter
@@ -969,7 +980,7 @@ fun AdminDashboardScreen(
                                 s.phone.contains(shopSearchQuery)
                         val matchesFilter = when (shopStatusFilter) {
                             "Tất cả" -> true
-                            else -> s.status == shopStatusFilter
+                            else -> effectiveStatusOf(s) == shopStatusFilter
                         }
                         matchesSearch && matchesFilter
                     }
@@ -979,6 +990,7 @@ fun AdminDashboardScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(filteredShops) { shop ->
+                            val displayStatus = effectiveStatusOf(shop)
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1016,10 +1028,10 @@ fun AdminDashboardScreen(
                                         }
 
                                         // Status badge
-                                        val (bgColor, textColor) = when (shop.status) {
+                                        val (bgColor, textColor) = when (displayStatus) {
                                             "Đang hoạt động" -> Color(0xFFE6F4EA) to Color(0xFF137333)
                                             "Chờ duyệt" -> Color(0xFFFEF3C7) to Color(0xFFD97706)
-                                            "Tạm khóa" -> Color(0xFFFCEEEB) to Color(0xFFE11D48)
+                                            "Đã đóng cửa", "Tạm khóa" -> Color(0xFFFCEEEB) to Color(0xFFE11D48)
                                             else -> Color(0xFFF3F4F6) to Color(0xFF6B7280)
                                         }
                                         Box(
@@ -1029,7 +1041,7 @@ fun AdminDashboardScreen(
                                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                                         ) {
                                             Text(
-                                                text = shop.status,
+                                                text = displayStatus,
                                                 fontSize = 10.5.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = textColor,
@@ -2046,6 +2058,20 @@ fun AdminDashboardScreen(
         // ==================== DETAIL MODALS (SPEC B: 4 NHÓM HỒ SƠ SALON) ====================
         if (selectedShopDetail != null) {
             val shop = selectedShopDetail!!
+            val detailSyncedStatuses by com.applamdep.common.AppBookingSyncBridge.shopStatusFlow.collectAsState()
+            val detailStatus = if (shop.code == "SALON-001" &&
+                detailSyncedStatuses["shop_01"] == com.applamdep.merchant.core.constants.MerchantConstants.SHOP_STATUS_CLOSED
+            ) {
+                "Đã đóng cửa"
+            } else {
+                shop.status
+            }
+            val (detailBgColor, detailTextColor) = when (detailStatus) {
+                "Đang hoạt động" -> Color(0xFFE6F4EA) to Color(0xFF137333)
+                "Chờ duyệt" -> Color(0xFFFEF3C7) to Color(0xFFD97706)
+                "Đã đóng cửa", "Tạm khóa" -> Color(0xFFFCEEEB) to Color(0xFFE11D48)
+                else -> Color(0xFFF3F4F6) to Color(0xFF6B7280)
+            }
             ModalBottomSheet(
                 onDismissRequest = { selectedShopDetail = null },
                 containerColor = Color.White
@@ -2062,17 +2088,17 @@ fun AdminDashboardScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                                 Text(text = shop.name, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color(0xFF24090F))
                                 Text(text = "Mã cơ sở: ${shop.code}", fontSize = 12.sp, color = Color(0xFF7A686D))
                             }
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFFFCEEEB))
+                                    .background(detailBgColor)
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
-                                Text(text = shop.status, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF6B1228))
+                                Text(text = detailStatus, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = detailTextColor)
                             }
                         }
                     }
@@ -2147,6 +2173,21 @@ fun AdminDashboardScreen(
                                     ) {
                                         Text("Từ chối hồ sơ", color = Color(0xFFE11D48))
                                     }
+                                }
+                            } else if (detailStatus == "Đã đóng cửa") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color(0xFFFCEEEB))
+                                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                                ) {
+                                    Text(
+                                        text = "Cửa hàng hiện đang tạm đóng cửa theo thiết lập từ đối tác.",
+                                        fontSize = 12.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFFE11D48)
+                                    )
                                 }
                             } else {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {

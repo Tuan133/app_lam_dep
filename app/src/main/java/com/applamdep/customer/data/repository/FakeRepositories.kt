@@ -1,5 +1,6 @@
 package com.applamdep.customer.data.repository
 
+import com.applamdep.common.BookingSyncGateway
 import com.applamdep.customer.core.base.BaseRepository
 import com.applamdep.customer.core.constants.AppConstants
 import com.applamdep.customer.core.network.FirebaseApiClient
@@ -136,12 +137,14 @@ class FakeShopRepository(
 
     override fun getApprovedShops(): Flow<List<Shop>> {
         return shopsFlow.map { list ->
-            // Chỉ lấy shop APPROVED và còn hạn, ưu tiên VIP lên đầu
-            list.filter { it.status == AppConstants.SHOP_STATUS_APPROVED && it.isPlanValid }
-                .sortedWith(
-                    compareByDescending<Shop> { it.isVipActive }
-                        .thenByDescending { it.rating }
-                )
+            // Lấy shop APPROVED hoặc CLOSED (để hiển thị rõ trạng thái Đã đóng cửa) và còn hạn, ưu tiên VIP lên đầu
+            list.filter {
+                (it.status == AppConstants.SHOP_STATUS_APPROVED || it.status == AppConstants.SHOP_STATUS_CLOSED) &&
+                    it.isPlanValid
+            }.sortedWith(
+                compareByDescending<Shop> { it.isVipActive }
+                    .thenByDescending { it.rating }
+            )
         }
     }
 
@@ -149,15 +152,24 @@ class FakeShopRepository(
         return shopsFlow.map { list ->
             val cleanQuery = query.trim().lowercase()
             list.filter { shop ->
-                shop.status == AppConstants.SHOP_STATUS_APPROVED && shop.isPlanValid &&
-                        (shop.name.lowercase().contains(cleanQuery) ||
-                                shop.address.lowercase().contains(cleanQuery) ||
-                                sampleServices.any { (it.shopId == shop.id || (shop.id == "salon_01" && it.shopId == "shop_lamour")) && it.name.lowercase().contains(cleanQuery) })
+                (shop.status == AppConstants.SHOP_STATUS_APPROVED || shop.status == AppConstants.SHOP_STATUS_CLOSED) &&
+                    shop.isPlanValid &&
+                    (shop.name.lowercase().contains(cleanQuery) ||
+                        shop.address.lowercase().contains(cleanQuery) ||
+                        sampleServices.any { (it.shopId == shop.id || (shop.id == "salon_01" && it.shopId == "shop_lamour")) && it.name.lowercase().contains(cleanQuery) })
             }.sortedWith(
                 compareByDescending<Shop> { it.isVipActive }
                     .thenByDescending { it.rating }
             )
         }
+    }
+
+    fun updateShopStatusFromSync(customerShopId: String, status: String) {
+        val current = shopsFlow.value
+        val updated = current.map { shop ->
+            if (shop.id == customerShopId) shop.copy(status = status) else shop
+        }
+        shopsFlow.value = updated
     }
 
     override suspend fun getShopById(shopId: String): Result<Shop> = safeCall {
@@ -182,15 +194,29 @@ class FakeShopRepository(
     }
 
     override fun getShopSlots(shopId: String, date: String): Flow<List<ShopSlot>> {
-        val sampleSlots = listOf(
-            ShopSlot("slot_01", shopId, date, "09:00", maxCapacity = 2, bookedCount = 2, isAvailable = false), // Hết chỗ
-            ShopSlot("slot_02", shopId, date, "10:00", maxCapacity = 3, bookedCount = 1, isAvailable = true),
-            ShopSlot("slot_03", shopId, date, "11:30", maxCapacity = 3, bookedCount = 0, isAvailable = true),
-            ShopSlot("slot_04", shopId, date, "14:00", maxCapacity = 3, bookedCount = 1, isAvailable = true),
-            ShopSlot("slot_05", shopId, date, "15:30", maxCapacity = 2, bookedCount = 0, isAvailable = true),
-            ShopSlot("slot_06", shopId, date, "17:00", maxCapacity = 2, bookedCount = 0, isAvailable = true),
-            ShopSlot("slot_07", shopId, date, "18:30", maxCapacity = 3, bookedCount = 2, isAvailable = true)
-        )
+        val todayStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+        val isInitialDay = date == todayStr || date == "2026-10-29"
+        val sampleSlots = if (isInitialDay) {
+            listOf(
+                ShopSlot("slot_01", shopId, date, "09:00", maxCapacity = 1, bookedCount = 1, isAvailable = false),
+                ShopSlot("slot_02", shopId, date, "10:30", maxCapacity = 1, bookedCount = 1, isAvailable = false),
+                ShopSlot("slot_03", shopId, date, "13:30", maxCapacity = 1, bookedCount = 1, isAvailable = false),
+                ShopSlot("slot_04", shopId, date, "15:00", maxCapacity = 1, bookedCount = 1, isAvailable = false),
+                ShopSlot("slot_05", shopId, date, "16:30", maxCapacity = 1, bookedCount = 0, isAvailable = false),
+                ShopSlot("slot_06", shopId, date, "18:00", maxCapacity = 1, bookedCount = 1, isAvailable = false),
+                ShopSlot("slot_07", shopId, date, "19:30", maxCapacity = 1, bookedCount = 0, isAvailable = true)
+            )
+        } else {
+            listOf(
+                ShopSlot("${date}_slot_01", shopId, date, "09:00", maxCapacity = 1, bookedCount = 0, isAvailable = true),
+                ShopSlot("${date}_slot_02", shopId, date, "10:30", maxCapacity = 1, bookedCount = 0, isAvailable = true),
+                ShopSlot("${date}_slot_03", shopId, date, "13:30", maxCapacity = 1, bookedCount = 0, isAvailable = true),
+                ShopSlot("${date}_slot_04", shopId, date, "15:00", maxCapacity = 1, bookedCount = 0, isAvailable = true),
+                ShopSlot("${date}_slot_05", shopId, date, "16:30", maxCapacity = 1, bookedCount = 0, isAvailable = true),
+                ShopSlot("${date}_slot_06", shopId, date, "18:00", maxCapacity = 1, bookedCount = 0, isAvailable = true),
+                ShopSlot("${date}_slot_07", shopId, date, "19:30", maxCapacity = 1, bookedCount = 0, isAvailable = true)
+            )
+        }
         return MutableStateFlow(sampleSlots)
     }
 
@@ -213,7 +239,9 @@ class FakeShopRepository(
 /**
  * Fake Booking Repository
  */
-class FakeBookingRepository : BaseRepository(), BookingRepository {
+class FakeBookingRepository(
+    private val syncGateway: BookingSyncGateway? = null
+) : BaseRepository(), BookingRepository {
     private val bookings = MutableStateFlow<List<Booking>>(
         listOf(
             Booking(
@@ -289,6 +317,7 @@ class FakeBookingRepository : BaseRepository(), BookingRepository {
         val currentList = bookings.value.toMutableList()
         currentList.add(0, booking)
         bookings.value = currentList
+        syncGateway?.onCustomerBookingCreated(booking)
         booking.id
     }
 
@@ -327,6 +356,7 @@ class FakeBookingRepository : BaseRepository(), BookingRepository {
             } else b
         }
         bookings.value = updated
+        syncGateway?.onCustomerBookingReviewed(bookingId)
     }
 
     override suspend fun cancelBooking(bookingId: String, reason: String): Result<Unit> = safeCall {
@@ -340,6 +370,26 @@ class FakeBookingRepository : BaseRepository(), BookingRepository {
             } else b
         }
         bookings.value = updated
+        syncGateway?.onCustomerBookingCancelled(bookingId, reason)
+    }
+
+    fun syncFromMerchant(booking: Booking, createIfMissing: Boolean) {
+        val currentList = bookings.value
+        val exists = currentList.any { it.id == booking.id }
+        if (exists) {
+            bookings.value = currentList.map { existing ->
+                if (existing.id == booking.id) {
+                    existing.copy(
+                        status = booking.status,
+                        cancelReason = booking.cancelReason ?: existing.cancelReason,
+                        cancelledAt = booking.cancelledAt ?: existing.cancelledAt,
+                        isReviewed = existing.isReviewed || booking.isReviewed
+                    )
+                } else existing
+            }
+        } else if (createIfMissing) {
+            bookings.value = listOf(booking) + currentList
+        }
     }
 }
 
@@ -469,7 +519,9 @@ class FakeWalletRepository : BaseRepository(), WalletRepository {
 /**
  * Fake Review Repository
  */
-class FakeReviewRepository : BaseRepository(), ReviewRepository {
+class FakeReviewRepository(
+    private val syncGateway: BookingSyncGateway? = null
+) : BaseRepository(), ReviewRepository {
     private val reviewsFlow = MutableStateFlow(
         listOf(
             Review(
@@ -516,6 +568,7 @@ class FakeReviewRepository : BaseRepository(), ReviewRepository {
         val list = reviewsFlow.value.toMutableList()
         list.add(0, review)
         reviewsFlow.value = list
+        syncGateway?.onCustomerReviewSubmitted(review)
     }
 
     override suspend fun replyReview(reviewId: String, reply: String): Result<Unit> = safeCall {

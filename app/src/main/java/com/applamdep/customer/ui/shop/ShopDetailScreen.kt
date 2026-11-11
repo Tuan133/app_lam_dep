@@ -702,10 +702,21 @@ fun ShopDetailScreen(
                                                 )
                                             }
 
-                                            // Giờ làm việc
+                                            // Giờ làm việc / Trạng thái đóng cửa
+                                            val isClosed = shop.status == com.applamdep.customer.core.constants.AppConstants.SHOP_STATUS_CLOSED
                                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                Icon(imageVector = Icons.Default.Schedule, contentDescription = null, tint = Color(0xFF6B7280), modifier = Modifier.size(16.dp))
-                                                Text(text = "Giờ mở cửa: ${shop.openingHours} (Thứ 2 - Chủ nhật)", fontSize = 12.5.sp, color = Color(0xFF374151))
+                                                Icon(
+                                                    imageVector = Icons.Default.Schedule,
+                                                    contentDescription = null,
+                                                    tint = if (isClosed) Color(0xFFD32F2F) else Color(0xFF6B7280),
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Text(
+                                                    text = if (isClosed) "Trạng thái: Đã đóng cửa" else "Giờ mở cửa: ${shop.openingHours} (Thứ 2 - Chủ nhật)",
+                                                    fontSize = 12.5.sp,
+                                                    fontWeight = if (isClosed) FontWeight.Bold else FontWeight.Normal,
+                                                    color = if (isClosed) Color(0xFFD32F2F) else Color(0xFF374151)
+                                                )
                                             }
 
                                             // Các nút link mạng xã hội
@@ -1003,17 +1014,23 @@ fun ShopDetailScreen(
                                 )
                             }
 
-                            // Nút bấm chính "Chọn lịch ngay" (màu Grab Green)
+                            // Nút bấm chính "Chọn lịch ngay" (khóa khi cửa hàng đã đóng cửa)
+                            val isShopClosedBottom = shop.status == com.applamdep.customer.core.constants.AppConstants.SHOP_STATUS_CLOSED
                             Button(
                                 onClick = {
                                     val firstService = services.firstOrNull()
                                     onSelectServiceForBooking(shop.id, firstService?.id ?: "srv_01")
                                 },
+                                enabled = !isShopClosedBottom,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(48.dp),
                                 shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = LuxuryWine)
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = LuxuryWine,
+                                    disabledContainerColor = Color(0xFFFDECEA),
+                                    disabledContentColor = Color(0xFFD32F2F)
+                                )
                             ) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -1021,18 +1038,20 @@ fun ShopDetailScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "Chọn lịch ngay",
+                                        text = if (isShopClosedBottom) "Cửa hàng đã đóng cửa" else "Chọn lịch ngay",
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White
+                                        color = if (isShopClosedBottom) Color(0xFFD32F2F) else Color.White
                                     )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Icon(
-                                        imageVector = Icons.Default.ChevronRight,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(18.dp)
-                                    )
+                                    if (!isShopClosedBottom) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.ChevronRight,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
                                 }
                             }
                         }

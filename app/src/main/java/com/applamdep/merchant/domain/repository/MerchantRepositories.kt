@@ -45,6 +45,7 @@ interface SlotRepository {
     suspend fun saveGeneratedSlots(slots: List<SlotItem>): Result<Unit>
     suspend fun updateSlotCapacity(slotId: String, newCapacity: Int): Result<Unit>
     suspend fun toggleSlotBlock(slotId: String, isBlocked: Boolean): Result<Unit>
+    suspend fun updateSlot(slot: SlotItem): Result<Unit>
 }
 
 // 5. Quản lý Booking & Trạng thái dịch vụ
@@ -53,6 +54,8 @@ interface BookingRepository {
     suspend fun updateBookingStatus(bookingId: String, newStatus: String, reason: String? = null): Result<Unit>
     suspend fun getExpiredInServiceBookings(shopId: String, thresholdMillis: Long): Result<List<Booking>>
     suspend fun checkAndAutoCompleteBookings(shopId: String): Result<Int>
+    suspend fun checkAndAutoApproveBookings(shopId: String): Result<Int>
+    suspend fun cancelBookingsForShopClosure(bookingIds: List<String>, reason: String): Result<Int>
 }
 
 // 6. Quản lý Đánh giá & Phản hồi
@@ -67,8 +70,8 @@ interface ReviewRepository {
 interface TransactionRepository {
     fun getShopTransactions(shopId: String): Flow<List<Transaction>>
     fun getFinancialSummary(shopId: String): Flow<FinancialSummary>
-    suspend fun releaseDeposit(bookingId: String): Result<Unit>
-    suspend fun refundDeposit(bookingId: String): Result<Unit>
+    suspend fun releaseDeposit(bookingId: String, amount: Long? = null): Result<Unit>
+    suspend fun refundDeposit(bookingId: String, amount: Long? = null): Result<Unit>
 }
 
 // 8. Quản lý Gói đối tác & Cấu hình phí

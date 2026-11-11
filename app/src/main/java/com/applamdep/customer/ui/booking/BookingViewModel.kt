@@ -61,6 +61,11 @@ class BookingViewModel(
     fun initBooking(shopId: String, serviceId: String) {
         launchWithLoading {
             val shop = shopRepository.getShopById(shopId).getOrThrow()
+            if (shop.status == AppConstants.SHOP_STATUS_CLOSED) {
+                _formData.value = null
+                updateState(UiState.Error("Cửa hàng hiện đang tạm đóng cửa, chưa nhận lịch hẹn mới."))
+                return@launchWithLoading
+            }
             var targetService: ServiceItem? = null
 
             // Lấy danh sách dịch vụ để tìm serviceId

@@ -792,12 +792,31 @@ fun CustomerHomeScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        text = "1994 Nailsroom",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.5.sp,
-                                        color = Color(0xFF24090F)
-                                    )
+                                    val homeShopStatusMap by com.applamdep.common.AppBookingSyncBridge.shopStatusFlow.collectAsState()
+                                    val is1994Closed = homeShopStatusMap["salon_01"] == com.applamdep.customer.core.constants.AppConstants.SHOP_STATUS_CLOSED
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text(
+                                            text = "1994 Nailsroom",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.5.sp,
+                                            color = Color(0xFF24090F)
+                                        )
+                                        if (is1994Closed) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(Color(0xFFFDECEA))
+                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = "Đã đóng cửa",
+                                                    fontSize = 9.5.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFFD32F2F)
+                                                )
+                                            }
+                                        }
+                                    }
                                     Box(
                                         modifier = Modifier.clickable { 
                                             isFavorite = !isFavorite 

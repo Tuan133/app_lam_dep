@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.applamdep.customer.core.constants.AppConstants
 import com.applamdep.customer.domain.model.Shop
 import com.applamdep.customer.ui.components.GrabDepositBadge
 import com.applamdep.customer.ui.components.GrabVipBadge
@@ -150,12 +151,13 @@ fun ShopCardItem(
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // Giờ mở cửa
+                // Giờ mở cửa / Trạng thái đóng cửa
+                val isClosed = shop.status == AppConstants.SHOP_STATUS_CLOSED
                 Text(
-                    text = "Giờ mở cửa: ${shop.openingHours}",
+                    text = if (isClosed) "Đã đóng cửa" else "Giờ mở cửa: ${shop.openingHours}",
                     fontSize = 12.sp,
-                    color = GrabGreenDark,
-                    fontWeight = FontWeight.Medium
+                    color = if (isClosed) Color(0xFFD32F2F) else GrabGreenDark,
+                    fontWeight = if (isClosed) FontWeight.Bold else FontWeight.Medium
                 )
             }
         }

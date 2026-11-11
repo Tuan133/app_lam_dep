@@ -90,6 +90,39 @@ fun ShopStatusTrackingScreen(
                     }
                 }
 
+                MerchantConstants.SHOP_STATUS_CLOSED -> {
+                    StatusIconBox(
+                        icon = Icons.Default.Close,
+                        iconTint = MerchantError,
+                        bgTint = Color(0xFFFDECEA)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Cửa hàng tạm thời đã đóng cửa",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MerchantError
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Cơ sở '${profile.name}' đang ở trạng thái đóng cửa${profile.closeReason?.let { " ($it)" } ?: ""}.",
+                        fontSize = 14.sp,
+                        color = MerchantTextSecondary,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    StatusBadge(status = profile.status)
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Button(
+                        onClick = onEnterPortal,
+                        colors = ButtonDefaults.buttonColors(containerColor = MerchantPrimary),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                    ) {
+                        Text(text = "Quay lại Trang Quản trị Cửa hàng", fontWeight = FontWeight.Bold)
+                    }
+                }
+
                 MerchantConstants.SHOP_STATUS_REJECTED -> {
                     StatusIconBox(
                         icon = Icons.Default.Close,
